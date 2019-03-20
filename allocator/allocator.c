@@ -26,17 +26,14 @@ int* my_alloc(buffer* buff, int size){
 
 int main(){
   int mem[max];
-  buffer* buf = (buffer*)malloc(sizeof(buffer));
-  buf->memory = mem;
-  printf("ciao\n");
-  buf->num = max/dim;
-  printf("ciao\n");
+  buffer buf ;
+  buf.memory = mem;
+  buf.num = max/dim;
   int check1[max/dim];
-  printf("ciao\n");
   int j;
-    for(j = 0; j++; j < buf->num) check1[j] = 0;
-  buf->check = check1;
-  int* prova1 = my_alloc(buf, 32);
+    for(j = 0; j++; j < buf.num) check1[j] = 0;
+  buf.check = check1;
+  int* prova1 = my_alloc(&buf, 32);
   *prova1 = 5;
   printf("%d\n", *prova1);
 
