@@ -5,16 +5,16 @@
 
 #define MAX_NUM_ITEMS 64
 
-typedef struct IntListItem{
-  ListItem list;
+typedef struct IntlistItem{
+  listItem list;
   int info;
-} IntListItem;
+} IntlistItem;
 
-void IntList_print(ListHead* head){
-  ListItem* aux=head->first;
+void Intlist_print(listHead* head){
+  listItem* aux=head->first;
   printf("[");
   while(aux){
-    IntListItem* element = (IntListItem*) aux;
+    IntlistItem* element = (IntlistItem*) aux;
     printf("%d ", element->info);
     aux=aux->next;
   }
@@ -23,11 +23,11 @@ void IntList_print(ListHead* head){
 
 int main(int argc, char** argv) {
   // we populate the list, by inserting MAX_NUM_ITEMS
-  ListHead head;
-  List_init(&head);
+  listHead head;
+  list_init(&head);
   for (int i=0; i<MAX_NUM_ITEMS; ++i){
-    IntListItem* new_element= (IntListItem*)
-      malloc(sizeof(IntListItem));
+    IntlistItem* new_element= (IntlistItem*)
+      malloc(sizeof(IntlistItem));
     if (! new_element) {
       printf("out of memory\n");
       break;
@@ -35,50 +35,50 @@ int main(int argc, char** argv) {
     new_element->list.prev=0;
     new_element->list.next=0;
     new_element->info=i;
-    ListItem* result=
-      List_insert(&head, head.last, (ListItem*) new_element);
+    listItem* result=
+      list_insert(&head, head.last, (listItem*) new_element);
     assert(result);
   }
-  IntList_print(&head);
+  Intlist_print(&head);
 
   printf("removing odd elements");
-  ListItem* aux=head.first;
+  listItem* aux=head.first;
   int k=0;
   while(aux){
-    ListItem* item=aux;
+    listItem* item=aux;
     aux=aux->next;
     if (k%2){
-      List_detach(&head, item);
+      list_detach(&head, item);
       free(item);
     }
     ++k;
   }
-  IntList_print(&head);
+  Intlist_print(&head);
 
   printf("removing from the head, half of the list");
   int size=head.size;
   k=0;
   while(head.first && k<size/2){
-    ListItem* item=List_detach(&head, head.first);
+    listItem* item=list_detach(&head, head.first);
     assert(item);
     free(item);
     ++k;
   }
-  IntList_print(&head);
+  Intlist_print(&head);
 
   printf("removing from the tail the rest of the list, until it has 1 element");
   while(head.first && head.size>1){
-    ListItem* item=List_detach(&head, head.last);
+    listItem* item=list_detach(&head, head.last);
     assert(item);
     free(item);
   }
 
-  IntList_print(&head);
+  Intlist_print(&head);
 
   printf("removing last element");
-  ListItem* item=List_detach(&head, head.last);
+  listItem* item=list_detach(&head, head.last);
   assert(item);
   free(item);
-  IntList_print(&head);
+  Intlist_print(&head);
 
 }

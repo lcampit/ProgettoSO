@@ -1,15 +1,15 @@
 #include "linked_list.h"
 #include <assert.h>
 
-void List_init(ListHead* head) {
+void list_init(listHead* head) {
   head->first=0;
   head->last=0;
   head->size=0;
 }
 
-ListItem* List_find(ListHead* head, ListItem* item) {
+listItem* list_find(listHead* head, listItem* item) {
   // linear scanning of list
-  ListItem* aux=head->first;
+  listItem* aux=head->first;
   while(aux){
     if (aux==item)
       return item;
@@ -18,25 +18,25 @@ ListItem* List_find(ListHead* head, ListItem* item) {
   return 0;
 }
 
-ListItem* List_insert(ListHead* head, ListItem* prev, ListItem* item) {
+listItem* list_insert(listHead* head, listItem* prev, listItem* item) {
   if (item->next || item->prev)
     return 0;
 
-#ifdef _LIST_DEBUG_
+#ifdef _list_DEBUG_
   // we check that the element is not in the list
-  ListItem* instance=List_find(head, item);
+  listItem* instance=list_find(head, item);
   assert(!instance);
 
   // we check that the previous is inthe list
 
   if (prev) {
-    ListItem* prev_instance=List_find(head, prev);
+    listItem* prev_instance=list_find(head, prev);
     assert(prev_instance);
   }
   // we check that the previous is inthe list
 #endif
 
-  ListItem* next= prev ? prev->next : head->first;
+  listItem* next= prev ? prev->next : head->first;
   if (prev) {
     item->prev=prev;
     prev->next=item;
@@ -53,16 +53,16 @@ ListItem* List_insert(ListHead* head, ListItem* prev, ListItem* item) {
   return item;
 }
 
-ListItem* List_detach(ListHead* head, ListItem* item) {
+listItem* list_detach(listHead* head, listItem* item) {
 
-#ifdef _LIST_DEBUG_
+#ifdef _list_DEBUG_
   // we check that the element is in the list
-  ListItem* instance=List_find(head, item);
+  listItem* instance=list_find(head, item);
   assert(instance);
 #endif
 
-  ListItem* prev=item->prev;
-  ListItem* next=item->next;
+  listItem* prev=item->prev;
+  listItem* next=item->next;
   if (prev){
     prev->next=next;
   }
