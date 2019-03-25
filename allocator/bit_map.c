@@ -1,39 +1,48 @@
 #include "bit_map.h"
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 
-int Bit_GetBytesFromBit(int n_bits){
-  int byte= n_bits/8; //converto bit in byte
-  int resto=0;
-  if(n_bits%8!=0) resto=1; //ne aggiungo 1 se ho avanzi
-  return byte+resto;
-};
-
-void Bit_init(BitMap* bm,int n_bits,uint8_t* buffo){
-   bm->bits=n_bits;
-   bm->friendo=buffo;
-   bm->size=Bit_GetBytesFromBit(n_bits);
-   // alloco tutto,ovviamente
+void BitMap_init(BitMap* b, int size){
+  b -> friendo = (unsigned char*) malloc(size*sizeof(unsigned char));
+  b -> size = size;
+  b -> bits = size*8;
+  BitMap_setRange(&bm, 0, 0, bm.bits);
 }
 
-void Bit_setBit(BitMap* bm, int index, int situa){
-  //converto bye in bit
-  int byte_num=index>>3;
-  assert(byte_num<bm->size);
-  int bit_in_byte=byte_num&0x03;
- // se situa=1 e bit=1 non faccio nulla, altrimenti lo setto; stessa cosa con situa=0
-  if (situa) {
-    bm->friendo[byte_num] |= (1<<bit_in_byte);
-  } else {
-    bm->friendo[byte_num] &= ~(1<<bit_in_byte);
+void BitMap_set(BitMap* b, int i) {
+    b->friendo[i / 8] |= 1 << (i & 7);
+}
+
+void BitMap_unset(BitMap* b, int i) {
+    b->friendo[i / 8] &= ~(1 << (i & 7));
+}
+
+int BitMap_get(BitMap* b, int i) {
+    return b->friendo[i / 8] & (1 << (i & 7)) ? 1 : 0;
+}
+
+void BitMap_print(BitMap* b, int from, int to){
+  int j;
+  for(j = from; j < to; j++){
+    printf("%d\t", BitMap_get(b, j));
   }
+  printf("\n");
 }
 
-int Bit_status(BitMap*bm,int index){
-  // byte to bit
-  int byte_num=index>>3;
-  assert(byte_num<bm->size);
-  int bit_in_byte=byte_num&0x03;
-  // controllo il contenuto
-  return (bm->friendo[byte_num] &(1<<bit_in_byte))!=0;
+void BitMap_setRange(BitMap* b, int bit, int from, int to){
+  int j;
+  for(j = from; j < to; j++){
+    if(bit) BitMap_set(b, j);
+    else BitMap_unset(b, j);
+  }
+  return;
+}
+
+void BitMap_printInfo(BitMap* b){
+  printf("----------\n");
+  printf("size: %d \t", b->size);
+  printf("bits: %d\n", b->bits);
+  printf("----------\n");
+  return;
 }
