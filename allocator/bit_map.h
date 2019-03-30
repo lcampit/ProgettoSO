@@ -1,16 +1,21 @@
 #include <stdint.h>
-//#include "bit_map.c"
 
 typedef struct{
   int size;// grandezza buffer
   int bits;// numero tot di bit
-  uint8_t *friendo; // buffer per il buddy
-}BitMap;
+  unsigned char *friendo; // buffer per il buddy
+} BitMap;
 
-int Bit_GetBytesFromBit(int n_bits);// converte bit in byte.
+void BitMap_init(BitMap* b, int size); //LC, MG allocates bitmap
 
-void Bit_init(BitMap* bm,int n_size,uint8_t* buffo); //inizializzazione
+void BitMap_set(BitMap* b, int i); //LC, MG Sets bit i to 1
 
-int Bit_status( BitMap*bm,int index); //funzione fondamentale di controllo
+void BitMap_unset(BitMap* b, int i); //LC, MG Sets bit i to 0
 
-void Bit_setBit(BitMap*bm,int index, int situa);//setta un bit a 0 o a 1;
+int BitMap_get(BitMap* b, int i); //LC, MG Fetches i-th bit
+
+void BitMap_print(BitMap* b, int from, int to);    //LC, MG: prints bits in bitmap in indexes from - to
+
+void BitMap_setRange(BitMap* b, int bit, int from, int end); //LC, MG: sets bits in bitmap to bit in indexes from - to
+
+void BitMap_printInfo(BitMap* b); //LC, MG: prints info on bitmap (NOT array contents)
