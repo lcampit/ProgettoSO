@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <stdint.h>
-//#include "bit_map.h"
+#include "bit_map.h"
 
 typedef struct {
   int* memory;

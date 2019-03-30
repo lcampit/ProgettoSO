@@ -1,7 +1,11 @@
-#include "bit_map.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+typedef struct{
+  int size;// grandezza buffer
+  int bits;// numero tot di bit
+  unsigned char *friendo; // buffer per il buddy
+} BitMap;
 
 void BitMap_init(BitMap* b, int size){
   b -> friendo = (unsigned char*) malloc(size*sizeof(unsigned char));
