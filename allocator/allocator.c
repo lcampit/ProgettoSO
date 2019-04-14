@@ -10,15 +10,17 @@ void* my_alloc(buffer* buff, int size){
   printf("block numbers = %d\n", numbers);
   for(; i <= (buff->num)-numbers; i++){
     if(BitMap_get(buff->check, i) == 0){
-      int s;
-      printf("Before allocation:\n");
-      BitMap_print(buff->check, 0, 10);
-      for(s = 0; s < numbers; s++){
-        BitMap_set(buff->check, i+s);
+      if(BitMap_checkRange(buff->check, i, i+numbers, 0)){
+        int s;
+        printf("Before allocation:\n");
+        BitMap_print(buff->check, 0, 10);
+        for(s = 0; s < numbers; s++){
+          BitMap_set(buff->check, i+s);
+        }
+        printf("After allocation:\n");
+        BitMap_print(buff->check, 0, 10);
+        return &(buff->memory[i]);
       }
-      printf("After allocation:\n");
-      BitMap_print(buff->check, 0, 10);
-      return &(buff->memory[i]);
     }
   }
   printf("not enough memory\n");

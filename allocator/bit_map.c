@@ -50,3 +50,11 @@ void BitMap_printInfo(BitMap* b){
   printf("----------\n");
   return;
 }
+
+int BitMap_checkRange(BitMap* b, int start, int end, int value){
+  int j = start;
+  for(; j < end; j++){
+    if(BitMap_get(b, j) != value) return 0;
+  }
+  return 1;
+}
