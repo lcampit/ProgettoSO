@@ -10,3 +10,4 @@ typedef struct {
 }buffer;
 
 void* my_alloc(buffer* buff, int size);
+void my_free(buffer* b, void* ptr,int size);

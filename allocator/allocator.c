@@ -12,17 +12,24 @@ void* my_alloc(buffer* buff, int size){
     if(BitMap_get(buff->check, i) == 0){
       if(BitMap_checkRange(buff->check, i, i+numbers, 0)){
         int s;
-        printf("Before allocation:\n");
-        BitMap_print(buff->check, 0, 10);
         for(s = 0; s < numbers; s++){
           BitMap_set(buff->check, i+s);
         }
-        printf("After allocation:\n");
-        BitMap_print(buff->check, 0, 10);
-        return &(buff->memory[i]);
+        return (void*)&(buff->memory[i]);
       }
     }
   }
   printf("not enough memory\n");
   return NULL;
+}
+
+void my_free(buffer* b, void* ptr, int size){
+  int ind = ptr;
+  int start = &(b->memory[0]);
+  int number = (ind - start)/4;
+  int i;
+  int num = size/b->block_size;
+  for(i = 0; i < num; i++){
+    BitMap_unset(b->check, number+i);
+  }
 }
