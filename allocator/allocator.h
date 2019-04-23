@@ -3,11 +3,14 @@
 #include "bit_map.h"
 
 typedef struct {
-  int* memory;
+  unsigned char* memory;
   int block_size;
-  int num;
+  int levels;
   BitMap*check;
+  int max;
 }buffer;
 
-void* my_alloc(buffer* buff, int size);
-void my_free(buffer* b, void* ptr,int size);
+void* my_alloc(buffer* buff, int size);//AF,MG grants memory spaces
+void my_free(buffer* b, void* ptr,int size);//AF,MG  frees memory TODO (we have the general algorithm, not the time)
+int buddylevel(buffer* buff,int size); //AF,MG returns level of depth of minimum memory segment
+void set_children(buffer*buf,int i,int level); //AF,MG sets children in bitmap

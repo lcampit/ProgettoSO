@@ -19,5 +19,3 @@ void BitMap_print(BitMap* b, int from, int to);    //LC, MG: prints bits in bitm
 void BitMap_setRange(BitMap* b, int bit, int from, int end); //LC, MG: sets bits in bitmap to bit in indexes from - to
 
 void BitMap_printInfo(BitMap* b); //LC, MG: prints info on bitmap (NOT array contents)
-
-int BitMap_checkRange(BitMap* b, int start, int end, int value); //check if b in range start end has all value value 
