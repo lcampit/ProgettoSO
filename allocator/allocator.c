@@ -31,16 +31,26 @@ void* my_alloc(buffer* buff, int size){
 }
 
 
-/*void my_free(buffer* b, void* ptr, int size){
-  int ind = ptr;
-  int start = &(b->memory[0]);
-  int number = (ind - start)/4;
-  int i;
-  int num = size/b->block_size;
-  for(i = 0; i < num; i++){
-    BitMap_unset(b->check, number+i);
-  }
-*/
+void my_free(buffer* b, void* ptr, int size){
+	int ind = ptr;
+	int level = buddylevel(b, size);
+	int num = pow(2, level);
+	int start = &(b->memory[0]);
+	int end = &(b->memory[b->max]);
+	int dim = (start - end);
+	int step = dim/num;
+	int i = (ind - start)/dim;
+	if((ind - start)%dim != 0) i++;
+	int pos = num +i; //posizione nella bitmap
+	BitMap_unset(b->check,pos);// block freed!
+	//let's free the children!
+	unset_children(b,pos,level);
+	//let's free the parents!(if the buddy is free, of course!)
+	unset_parents(b,pos,level);
+	return;
+	
+
+}
 
 int buddylevel(buffer* buff,int size){ 
      if(size>buff->max){
@@ -60,9 +70,32 @@ int buddylevel(buffer* buff,int size){
 
 void set_children(buffer*buf,int i,int level){
 	BitMap_set(buf->check,i);
-	if(level==buf->levels) return;
+	if(level==buf->levels+1) return;
 	else{
 		set_children(buf,2*i,level+1);
 		set_children(buf,2*i+1,level+1);
 	}
 }
+
+void unset_children(buffer*buf,int i,int level){
+	BitMap_unset(buf->check,i);
+	if(level==buf->levels+1) return;
+	else{
+		unset_children(buf,2*i,level+1);
+		unset_children(buf,2*i+1,level+1);
+	}
+}
+
+void unset_parents(buffer* buf, int i,int level){
+	int idx=0;
+	if(i%2==0) idx=1;
+	int j= i/2;
+	if(BitMap_get(buf->check,(j*2)+idx)==0){
+		BitMap_unset(buf->check,j);
+		if(level!=0){
+			unset_parents(buf,j,level-1);
+		}
+	}
+	return;
+}
+
