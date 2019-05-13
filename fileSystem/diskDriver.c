@@ -43,15 +43,19 @@ int DiskDriver_readBlock(DiskDriver* disk, void* dest, int block_num){
 
 int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num){
   if (block_num>NUM_BLOCK || block_num==0) return -1;
+  if (disk->mem[block_num]==NULL) disk->header->free_blocks-=1;
   disk->mem[block_num]=src;
   BitMap_set(disk->bitmap, block_num);
+  if (disk->header->first_free_block==block_num) disk->header->first_free_block=block_num+1;
   return 0;
 }
 
 int DiskDriver_freeBlock(DiskDriver* disk, int block_num) {
   if (block_num>NUM_BLOCK || block_num==0) return -1;
+  if (disk->mem[block_num]!=NULL) disk->header->free_blocks+=1;
   disk->mem[block_num] = NULL;
   BitMap_unset(disk->bitmap, block_num);
+  if (disk->header->first_free_block>block_num) disk->header->first_free_block=block_num;
   return 0;
 }
 
