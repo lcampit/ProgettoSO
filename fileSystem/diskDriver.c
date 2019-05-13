@@ -46,7 +46,12 @@ int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num){
   if (disk->mem[block_num]==NULL) disk->header->free_blocks-=1;
   disk->mem[block_num]=src;
   BitMap_set(disk->bitmap, block_num);
-  if (disk->header->first_free_block==block_num) disk->header->first_free_block=block_num+1;
+  if (disk->header->first_free_block==block_num){ 
+    while(disk->mem[block_num]!=NULL){
+      block_num+=1;
+    }
+    disk->header->first_free_block=block_num;
+  }
   return 0;
 }
 
