@@ -1,4 +1,6 @@
 # Prerequisites
+test
+test.*
 *.d
 
 # Object files

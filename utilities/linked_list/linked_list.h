@@ -11,7 +11,7 @@ typedef struct listHead {
   int size;
 } listHead;
 
-void list_init(listHead* head);
-listItem* list_find(listHead* head, listItem* item);
-listItem* list_insert(listHead* head, listItem* previous, listItem* item);
-listItem* list_detach(listHead* head, listItem* item);
+void list_init(listHead* head);   //Creates list
+listItem* list_find(listHead* head, listItem* item); //Finds item in list
+listItem* list_insert(listHead* head, listItem* previous, listItem* item); //inserts item in list after previous
+listItem* list_detach(listHead* head, listItem* item);  //deletes item from list withouth freeing it

@@ -10,8 +10,9 @@ typedef struct {
   int max;
 }buffer;
 
+buffer* buffer_init(int bytes); //Creates objects needed
 void* my_alloc(buffer* buff, int size);//AF,MG grants memory spaces
-void my_free(buffer* b, void* ptr,int size);//AF,MG  frees memory 
+void my_free(buffer* b, void* ptr,int size);//AF,MG  frees memory
 int buddylevel(buffer* buff,int size); //AF,MG returns level of depth of minimum memory segment
 void set_children(buffer*buf,int i,int level); //AF,MG sets children in bitmap
 void unset_children(buffer*buf,int i,int level); //AF,MG unsets children in bitmap

@@ -22,7 +22,6 @@ void Intlist_print(listHead* head){
 }
 
 int main(int argc, char** argv) {
-  // we populate the list, by inserting MAX_NUM_ITEMS
   listHead head;
   list_init(&head);
   for (int i=0; i<MAX_NUM_ITEMS; ++i){
