@@ -2,17 +2,6 @@
 #include <stdio.h>
 #include <math.h>
 #include "allocator.h"
-#define MINBLOCKSIZE 4
-
-buffer* buffer_init(int bytes){
-	buffer res;
-	BitMap_init(&res.bitmap, (int)(((bytes/MINBLOCKSIZE)*2) -1));
-	res.memory = unsigned char[bytes];
-	res.block_size = MINBLOCKSIZE;
-	res.max = bytes;
-	res.levels = buddylevel(res, MINBLOCKSIZE);
-	return &res;
-}
 
 void* my_alloc(buffer* buff, int size){
 	int level= buddylevel(buff,size);
@@ -38,7 +27,7 @@ void* my_alloc(buffer* buff, int size){
 		}
 		k++;
 	}
-
+	 return NULL; //shit hit the fan
 }
 
 
@@ -59,6 +48,7 @@ void my_free(buffer* b, void* ptr, int size){
 	//let's free the parents!(if the buddy is free, of course!)
 	unset_parents(b,pos,level);
 	return;
+
 
 
 }

@@ -1,3 +1,4 @@
+#pragma once
 #include <stdlib.h>
 #include <stdint.h>
 #include "bit_map.h"
@@ -10,7 +11,6 @@ typedef struct {
   int max;
 }buffer;
 
-buffer* buffer_init(int bytes); //Creates objects needed
 void* my_alloc(buffer* buff, int size);//AF,MG grants memory spaces
 void my_free(buffer* b, void* ptr,int size);//AF,MG  frees memory
 int buddylevel(buffer* buff,int size); //AF,MG returns level of depth of minimum memory segment
