@@ -27,6 +27,9 @@ void DiskDriver_init(DiskDriver* disk, int num_blocks){
 // writes in dest the block read in the dist at block_num position
 // returns 1 if block read was written, 0 elsewhere
 int DiskDriver_readBlock(DiskDriver* disk, char* dest, int block_num){
+  if(block_num > disk -> header -> num_blocks){   //Tryin to read a block out of bounds, dest is invalid
+    return 0;
+  }
   int resBit = BitMap_get(disk->map, block_num);
   char retrieved = disk -> blocks[block_num];
   *dest = retrieved;
@@ -37,8 +40,13 @@ int DiskDriver_readBlock(DiskDriver* disk, char* dest, int block_num){
 // write in disk, position block_num, the data in src.
 // updates the bitmap accordingly
 // returns 0 if everything goes well, 1 otherwise
-// TODO error cases, when to retun 1?
 int DiskDriver_writeBlock(DiskDriver* disk, char* src, int block_num){
+  if(BitMap_get(disk->map, block_num) == 1){  //Should not be able to write on non-free blocks
+    return 1;
+  }
+  if(block_num > disk -> header -> num_blocks){  //Checks if tryin to write outside of bounds
+    return 1;
+  }
   BitMap_set(disk -> map, block_num);
   disk -> blocks[block_num] = *src;
   return 0;
@@ -49,8 +57,11 @@ int DiskDriver_writeBlock(DiskDriver* disk, char* src, int block_num){
 // Updates the bitmap accordingly
 // returns 0 if everything goes well, 1 otherwise
 int DiskDriver_freeBlock(DiskDriver* disk, int block_num){
-  if(BitMap_get(disk -> map, block_num) == 0) { //Should not free an empty block
+  if(block_num > disk -> header -> num_blocks){  //Tryin to free an out of bounds block
     return 1;
+  }
+  else if(BitMap_get(disk -> map, block_num) == 0) { //block already free
+    return 0;
   }
   else {
     BitMap_unset(disk -> map, block_num); //Set block_num bit to 0, free block
@@ -61,8 +72,11 @@ int DiskDriver_freeBlock(DiskDriver* disk, int block_num){
 
 // LC
 // returns an index for the first free block in the bitmap
-// returns -1 if there aren't any
+// returns -1 if there aren't any or if anything goes wrong
 int DiskDriver_getFreeBlock(DiskDriver* disk, int start){
+  if (start > disk -> header -> bitmap_blocks){
+    return -1;
+  }
   int i;
   for(i = start; i < disk -> header -> bitmap_blocks; i++){
     if(BitMap_get(disk -> map, i) == 0){
