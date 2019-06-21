@@ -1,73 +1,70 @@
-#include "includerOne.h"
+#include "./diskDriver.h"
 
-void DiskDriver_init(DiskDriver* disk, int num_blocks, buffer* buf) {
-  FirstDirectoryBlock* memo = my_alloc(buf, sizeof(FirstDirectoryBlock)*num_blocks*BLOCK_SIZE);
-  disk->mem=memo;
+//LC
+//creates all needed structs for all operations, allocating
+//the necessary memory, side-effecting on the provided disk pointer
+//creates a diskDriver of num_blocks blocks
+//the bitmap has a bit for each disk driver block
+void DiskDriver_init(DiskDriver* disk, int num_blocks){
+    disk -> header -> num_blocks = num_blocks;
+    disk -> header -> bitmap_blocks = num_blocks;
+    disk -> header -> bitmap_entries = num_blocks / 8;      //number of bytes in the bitmap
+    disk -> header -> free_blocks = num_blocks;
+    disk -> header -> first_free_block = 0;
+    BitMap_init(disk->map, disk -> header -> bitmap_entries); //creates bitmap with bitmpa_entries * 8 bit, one bit per block
 
-  BitMap bit;
-  BitMap_init(&bit, NUM_BLOCK);
-
-  DiskHeader* head = my_alloc(buf, sizeof(DiskHeader));
-  head->num_blocks = NUM_BLOCK;
-  head->bitmap_entries = NUM_BLOCK/8;
-  head->free_blocks = NUM_BLOCK;
-  head->first_free_block = 1;
-
-  FirstDirectoryBlock* root = my_alloc(buf, sizeof(FirstDirectoryBlock));   //allocation of first directory "/"
-  root->num_entries = 0;
-
-  BlockHeader* blockh = my_alloc(buf, sizeof(BlockHeader));
-  blockh->previous_block = -1;
-  blockh->next_block = -1;
-  blockh->block_in_file = 0;
-  root->header = *blockh;
-  FileControlBlock* ficb = my_alloc(buf, sizeof(FileControlBlock));
-  ficb->directory_block=-1;
-  ficb->block_in_disk=0;
-  ficb->name[0]='/';
-  ficb->size_in_bytes = sizeof(FirstDirectoryBlock);
-  ficb->size_in_blocks=1;
-  ficb->is_dir=1;
-  root->fcb=*ficb;
-  disk->mem[0] = *root;
-  return;
+    //Using malloc for testing, will switch to our allocator once everything is done
+    disk -> blocks = (char*) malloc(sizeof(char)* num_blocks * BLOCK_SIZE);
+    return;
 }
 
-int DiskDriver_readBlock(DiskDriver* disk, void* dest, int block_num){
-  *dest = disk->mem[block_num];
-  int check = BitMap_get(disk->bitmap, block_num);
-  if (check==0) return -1;
-  else return 0;
+
+
+//LC
+// writes in dest the block read in the dist at block_num position
+// returns 1 if block read was written, 0 elsewhere
+int DiskDriver_readBlock(DiskDriver* disk, char* dest, int block_num){
+  int resBit = BitMap_get(disk->map, block_num);
+  char retrieved = disk -> blocks[block_num];
+  *dest = retrieved;
+  return resBit;        //dest is valid only if block was written
 }
 
-int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num){
-  return 1;
-  /*
-  if (block_num>NUM_BLOCK || block_num==0) return -1;
-  if (disk->mem[block_num]==NULL) disk->header->free_blocks-=1;
-  disk->mem[block_num]=src;
-  BitMap_set(disk->bitmap, block_num);
-  if (disk->header->first_free_block==block_num) disk->header->first_free_block=block_num+1;
+//LC
+// write in disk, position block_num, the data in src.
+// updates the bitmap accordingly
+// returns 0 if everything goes well, 1 otherwise
+// TODO error cases, when to retun 1?
+int DiskDriver_writeBlock(DiskDriver* disk, char* src, int block_num){
+  BitMap_set(disk -> map, block_num);
+  disk -> blocks[block_num] = *src;
   return 0;
-  */
 }
 
-int DiskDriver_freeBlock(DiskDriver* disk, int block_num) {
-  return 2;
-  /*
-  if (block_num>NUM_BLOCK || block_num==0) return -1;
-  if (disk->mem[block_num]!=NULL) disk->header->free_blocks+=1;
-  disk->mem[block_num] = NULL;
-  BitMap_unset(disk->bitmap, block_num);
-  if (disk->header->first_free_block>block_num) disk->header->first_free_block=block_num;
-  return 0;
-  */
+// LC
+// Empties a block in the disk at block_num position
+// Updates the bitmap accordingly
+// returns 0 if everything goes well, 1 otherwise
+int DiskDriver_freeBlock(DiskDriver* disk, int block_num){
+  if(BitMap_get(disk -> map, block_num) == 0) { //Should not free an empty block
+    return 1;
+  }
+  else {
+    BitMap_unset(disk -> map, block_num); //Set block_num bit to 0, free block
+    disk -> blocks[block_num] = 0;        //Empties block
+    return 0;
+  }
 }
 
+// LC
+// returns an index for the first free block in the bitmap
+// returns -1 if there aren't any
 int DiskDriver_getFreeBlock(DiskDriver* disk, int start){
-  return 3;
-  /*
-  if (start>disk->header->first_free_block) return start;
-  else return disk->header->first_free_block;
-  */
+  int i;
+  for(i = start; i < disk -> header -> bitmap_blocks; i++){
+    if(BitMap_get(disk -> map, i) == 0){
+      return i;       //Stops at first free block in bitmap
+    }
+  }
+  return -1;          //Returns -1 if memory is full, no free blocks available
 }
