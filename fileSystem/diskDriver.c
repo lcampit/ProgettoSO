@@ -6,11 +6,14 @@
 //creates a diskDriver of num_blocks blocks
 //the bitmap has a bit for each disk driver block
 void DiskDriver_init(DiskDriver* disk, int num_blocks){
+    disk -> header = (DiskHeader*) malloc(sizeof(DiskHeader));  //Allocates header and fills his fields
     disk -> header -> num_blocks = num_blocks;
     disk -> header -> bitmap_blocks = num_blocks;
     disk -> header -> bitmap_entries = num_blocks / 8;      //number of bytes in the bitmap
     disk -> header -> free_blocks = num_blocks;
     disk -> header -> first_free_block = 0;
+
+    disk -> map = (BitMap*) malloc(sizeof(BitMap));                 //Allocates Bitmap
     BitMap_init(disk->map, disk -> header -> bitmap_entries); //creates bitmap with bitmpa_entries * 8 bit, one bit per block
 
     //Using malloc for testing, will switch to our allocator once everything is done

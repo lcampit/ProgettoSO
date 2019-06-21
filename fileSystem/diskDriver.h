@@ -1,6 +1,7 @@
 #pragma once
-#include "../allocator/bit_map.h"
+#include "bit_map.h"
 #include <stdlib.h>       //For malloc and free, will be using our allocator once evrything is set up
+#include <stdio.h>        //Debugging the ol' reliable way
 
 #define BLOCK_SIZE 512
 
@@ -21,7 +22,7 @@ typedef struct {
 
 //LC
 //creates all needed structs for all operations, allocating
-//the necessary memory, side-effecting on the provided disk pointer
+//the necessary memory, side-effecting on the preallocated disk pointer
 //creates a diskDriver of num_blocks blocks
 //the bitmap has a block for each disk driver block
 void DiskDriver_init(DiskDriver* disk, int num_blocks);
