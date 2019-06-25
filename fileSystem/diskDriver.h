@@ -36,7 +36,7 @@ void DiskDriver_init(DiskDriver* disk, int num_blocks);
 
 //LC
 // writes in dest the block read in the dist at block_num position
-// returns 1 if block read was written, 0 otherwise
+// returns 1 if block read was written, so dest is valid, 0 otherwise
 int DiskDriver_readBlock(DiskDriver* disk, void** dest, int block_num);
 
 //LC

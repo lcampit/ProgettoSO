@@ -8,7 +8,7 @@
 // represents a chained list of blocks
 typedef struct {
   int previous_block; // previous block index, useless if block_in_file is 0
-  int next_block;     // next block index, useless if at the end of block TODO: Define at the end of block
+  int next_block;     // next block index, useless if at the end of block
   int block_in_file;  // position in the file, if first one (0) the struct contains a FCB
 } BlockHeader;
 
@@ -18,8 +18,8 @@ typedef struct {
   int parent_directory;   //First block of the parent directory
   int block_in_disk;      // repeated position of the block on the disk
   char name[128];
-  int size_in_bytes;
-  int size_in_blocks;
+  int size_in_bytes;      //for directories, sum of bytes of all files in it
+  int size_in_blocks;      //for directories, sum of blocks of all files in it
   int is_dir;             // 0 if file, 1 if dir
 } FileControlBlock;
 
@@ -33,7 +33,7 @@ typedef struct {
 // this is one of the next physical blocks of a file
 typedef struct {
   BlockHeader header;
-  char  data[BLOCK_SIZE-sizeof(BlockHeader)];
+  char data[BLOCK_SIZE-sizeof(BlockHeader)];
 } FileBlock;
 
 // this is the first physical block of a directory
@@ -41,7 +41,7 @@ typedef struct {
   BlockHeader header;
   FileControlBlock fcb;
   int num_entries;
-  int file_blocks[ (BLOCK_SIZE
+  int file_blocks[ (BLOCK_SIZE                                //indexes for FirstFileBlock of all files in directory
 		   -sizeof(BlockHeader)
 		   -sizeof(FileControlBlock)
 		    -sizeof(int))/sizeof(int) ];
@@ -51,7 +51,7 @@ typedef struct {
 typedef struct {
   BlockHeader header;
   int num_entries;
-  int file_blocks[ (BLOCK_SIZE-sizeof(BlockHeader))/sizeof(int) ];
+  int file_blocks[ (BLOCK_SIZE-sizeof(BlockHeader))/sizeof(int) ];  //indexes for FirstFileBlock of all files in directory
 } DirectoryBlock;
 /******************* stuff on disk END *******************/
 
@@ -69,7 +69,7 @@ typedef struct {
   FirstFileBlock* fcb;             // pointer to the first block of the file(read it)
   FirstDirectoryBlock* directory;  // pointer to the directory where the file is stored
   BlockHeader* current_block;      // current block in the file
-  int pos_in_file;                 // position of the cursor
+  int pos_in_file;                 // absolute position of the cursor in the file
 } FileHandle;
 
 typedef struct {
@@ -99,17 +99,20 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* dir, const char* filename);
 // returns 0 if anything is ok, 1 otherwise
 int SimpleFS_readDir(char** names, DirectoryHandle* dir);
 
+// LC
+// Creates a FileHandle about an existing file in the directory dir
+// Returns NULL if anything happens
+FileHandle* SimpleFS_openFile(DirectoryHandle* dir, const char* filename);
 
-// opens a file in the  directory d. The file should be exisiting
-FileHandle* SimpleFS_openFile(DirectoryHandle* d, const char* filename);
+// LC
+// closes an opened file by destroing the relative FileHandle
+// return 0 on success, 1 if anything happens
+int SimpleFS_close(FileHandle* fh);
 
-
-// closes a file handle (destroyes it)
-int SimpleFS_close(FileHandle* f);
-
-// writes in the file, at current position for size bytes stored in data
-// overwriting and allocating new space if necessary
-// returns the number of bytes written
+// LC
+// writes in the file, from cursor position for size bytes, the data in data
+// if necessary, allocates new blocks
+// returns the number of bytes written or -1 if anything goes wrong
 int SimpleFS_write(FileHandle* f, void* data, int size);
 
 // writes in the file, at current position size bytes stored in data

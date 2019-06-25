@@ -1,5 +1,7 @@
 #include "./fileSystem.h"
 
+//TODO All memory leaks must be taken care of
+
 
 // LC
 // initializes fileSystem on given disk (both preallocated)
@@ -64,7 +66,7 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* dir, const char* filename){
     return NULL;
   }
 
-  int max = sizeof(dir -> dcb -> num_entries); //computes maximum block capacity of dir
+  int max = (BLOCK_SIZE-sizeof(FileControlBlock)-sizeof(int))/sizeof(int);  //computes maximum block capacity of dir
   if(dir -> pos_in_dir > max){
     printf("No space left for file in current Directory Block\n");
     return NULL;
@@ -81,7 +83,7 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* dir, const char* filename){
     int index = fdb -> file_blocks[i];
     res = DiskDriver_readBlock(dir -> sfs -> disk, (void**)&(dest), index);
     if(res != 1){
-      printf("Dir Block was not written on disk\n");
+      printf("File Block was not written on disk\n");
       return NULL;
     }
     if(dest -> header . block_in_file == 0){   //we got a first file Block with a FCB, can safely cast
@@ -94,7 +96,7 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* dir, const char* filename){
   }
 
   /**** BEGIN CARE ****/
-  //This code checks if there is a file with the same name in any directory block linked
+  //The code below checks if there is a file with the same name in any directory block linked
   //to the provided one via his header.
   //Not sure if it's needed, so it's commented
   //If this comes up to be useful, it may require some additional attention
@@ -165,8 +167,6 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* dir, const char* filename){
 
   //End creating new file
 
-  free(dest); //releasing resources
-
   //updating directory values
 
   dir -> dcb -> file_blocks[dir->dcb->num_entries] = nextFreeBlock;
@@ -195,11 +195,215 @@ int SimpleFS_readDir(char** names, DirectoryHandle* dir){
     }
     char* src = dest -> fcb.name;
     names[i] = src;
-
     //int len = strlen(src);                They segFault, idk why
     //strncpy(names[i], src, len);
   }
   return 0;
+}
+
+// LC
+// Creates a FileHandle about an existing file in the directory dir
+// Returns NULL if anything happens
+FileHandle* SimpleFS_openFile(DirectoryHandle* dir, const char* filename){
+  //First we check if the provided file exists
+  FirstDirectoryBlock* fdb = dir -> dcb;
+  FileBlock* dest = (FileBlock*) malloc(sizeof(FileBlock));
+  int i, res;
+  for(i = 0; i < fdb -> num_entries; i++){
+    //retrieves file block
+    int index = fdb -> file_blocks[i];
+    res = DiskDriver_readBlock(dir -> sfs -> disk, (void**)&(dest), index);
+    if(res != 1){
+      printf("File Block was not written on disk\n");
+      return NULL;
+    }
+    if(dest -> header . block_in_file == 0){   //we got a first file Block with a FCB, can safely cast
+      FirstFileBlock* casted = (FirstFileBlock*) dest;
+      if(strncmp(filename, casted -> fcb.name, strlen(filename)) == 0){   //Same name file exits
+        FileHandle* fh = (FileHandle*) malloc(sizeof(FileHandle));
+        fh -> sfs = dir -> sfs;
+        fh -> fcb = casted;
+        fh -> directory = dir -> dcb;
+        fh -> current_block = &casted -> header;
+        fh -> pos_in_file = 0;
+        return fh;
+      }
+    }
+  }
+  //No file with given name was found
+  return NULL;
+}
+
+// LC
+// closes an opened file by destroing the relative FileHandle
+// return 0 on success, 1 if anything happens
+
+//Is there a way to avoid double close on same fh?
+int SimpleFS_close(FileHandle* fh){
+  if(fh == NULL){
+    return 1;         //closing a non-opened file
+  }
+  free(fh);
+  return 0;
+}
+
+
+// LC
+// writes in the file, from cursor position for size bytes, the data in data
+// if necessary, allocates new blocks
+// returns the number of bytes written or -1 if anything goes wrong
+
+int SimpleFS_write(FileHandle* f, void* data, int size){
+  int cursorStart = f -> pos_in_file;             //start index for writing
+  int i;                                          //Master Loop Variable
+  int res;                                        //Error management
+
+  if(data == NULL || size <= 0) return 0;         //Self-explanatory
+  char* dataToWrite = (char*) data;
+
+  // by looking at the cursor, we know in which block we are going to start writing
+  FirstFileBlock* ffb = f -> fcb;
+  FileBlock* dest = (FileBlock*) ffb;
+  FileBlock* previous = NULL;
+  if(cursorStart < BLOCK_SIZE-sizeof(FileControlBlock) - sizeof(BlockHeader)){    //start writing in FirstFileBlock
+    int h;
+    for(h = 0; h < size; h++){      //start writing;
+      if(cursorStart+h<(BLOCK_SIZE-sizeof(BlockHeader))){    //can safely write in data
+        ffb->data[cursorStart+h] = dataToWrite[h];
+      }
+      else break;
+    }
+    if(h < size){   //there's still something to write
+    //Creates new FileBlock, writes to disk and call write for the remaining data
+        int nextFreeBlock = DiskDriver_getFreeBlock(f -> sfs -> disk, ffb -> header.next_block);
+        if(nextFreeBlock == -1){  //No space left on disk
+          return -1;
+        }
+        FileBlock* to_write = (FileBlock*) malloc(sizeof(FileBlock));
+        to_write -> header.next_block = 0;
+        to_write -> header.previous_block = ffb -> fcb.block_in_disk;
+        to_write -> header.block_in_file = 1;   //next block after firstFileBlock
+        res = DiskDriver_writeBlock(f -> sfs -> disk, to_write, nextFreeBlock);
+        if(res != 0){     //something occcured while writing to disk
+          return -1;
+        }
+        //updating values
+        f -> pos_in_file+=h;
+        ffb -> header.next_block = nextFreeBlock;
+        f -> fcb -> fcb . size_in_bytes+=h;
+        f -> fcb -> fcb.size_in_blocks += 1;
+        f -> directory -> fcb . size_in_bytes += h;
+        f -> directory -> fcb . size_in_blocks += 1;
+        int recursiveWrite = SimpleFS_write(f, dataToWrite+h, size-h);   //keep writing on file
+        return h+recursiveWrite;              //should be equal to size
+    }
+    else {      //everything done
+        f -> pos_in_file += h;
+        f -> fcb -> fcb . size_in_bytes+=h;
+        f -> directory -> fcb . size_in_bytes += h;
+        return h;         //should be equal to size
+
+    }
+  }
+  else {                  //start writing in a FileBlock
+      res = DiskDriver_readBlock(f -> sfs -> disk, (void**)&(dest), f -> fcb -> header.next_block);   //jumps firstFileBlock which is full
+      cursorStart-=BLOCK_SIZE-sizeof(FileControlBlock) - sizeof(BlockHeader);
+      int num_jumps = cursorStart % (BLOCK_SIZE-sizeof(BlockHeader));         //computes how many file blocks must be run over
+      for(i = 0; i < num_jumps; i++){
+        previous = dest;
+        res = DiskDriver_readBlock(f -> sfs -> disk, (void**)&(dest), dest -> header.next_block);
+        if(res != 1){   //Destination block is not written on disk, an error occured
+          printf("Block was not written\n");
+          return -1;
+        }
+      }
+      //here dest contains the destination block
+      int j;
+      int relativeCursor = cursorStart - num_jumps*(BLOCK_SIZE-sizeof(BlockHeader));    //relative position of cursor in the dest file block
+      for(j = 0; j < size; j++){      //start writing;
+        if(relativeCursor+j<(BLOCK_SIZE-sizeof(BlockHeader))){    //can safely write in data
+          dest->data[relativeCursor+j] = dataToWrite[j];
+        }
+        else break;
+      }
+      if(j == 0){   //relative cursor points at end of block, a new block must be created and data written in it
+        int nextFreeBlock = DiskDriver_getFreeBlock(f -> sfs -> disk, f -> fcb -> fcb . block_in_disk);
+        if(nextFreeBlock == -1){  //No space left on disk
+          printf("No space left on disk\n");
+          return -1;
+        }
+
+        FileBlock* to_write = (FileBlock*) malloc(sizeof(FileBlock));
+        to_write -> header.next_block = 0;
+        if(previous != NULL)
+          to_write -> header.previous_block = previous -> header.next_block;
+        else    //if previous == NULL, we are creating a new block right after the FirstFileBlock
+          to_write -> header.previous_block = ffb -> fcb . block_in_disk;
+
+        to_write -> header.block_in_file = dest -> header.block_in_file +1;
+        res = DiskDriver_writeBlock(f -> sfs -> disk, to_write, nextFreeBlock);
+        if(res != 0){     //something occcured while writing to disk
+          printf("Error while writing new block to disk\n");
+          return -1;
+        }
+        //updating values
+        dest -> header.next_block = nextFreeBlock;
+        f -> pos_in_file+=j;
+        f -> fcb -> fcb . size_in_bytes+=j;
+        f -> fcb -> fcb.size_in_blocks += 1;
+        f -> directory -> fcb . size_in_bytes += j;
+        f -> directory -> fcb . size_in_blocks += 1;
+        f -> pos_in_file += 1;            //forgot to add this, bad shit happened
+        int recursiveWrite = SimpleFS_write(f, dataToWrite, size);   //keep writing on file
+        if(recursiveWrite == -1){
+          //printf("Something went wrong with recursive write\n");
+          return -1;
+        }
+        return recursiveWrite;     //should be exactly size
+
+      }
+
+      else if(j < size){ //there's still data to write
+      //Creates new FileBlock, writes to disk and call write for the remaining data
+          int nextFreeBlock = DiskDriver_getFreeBlock(f -> sfs -> disk, previous -> header.next_block);
+          if(nextFreeBlock == -1){  //No space left on disk
+            printf("No space left on disk\n");
+            return -1;
+          }
+          FileBlock* to_write = (FileBlock*) malloc(sizeof(FileBlock));
+          to_write -> header.next_block = 0;
+          to_write -> header.previous_block = previous -> header.next_block;
+          to_write -> header.block_in_file = dest -> header.block_in_file +1;
+          res = DiskDriver_writeBlock(f -> sfs -> disk, to_write, nextFreeBlock);
+          if(res != 0){     //something occcured while writing to disk
+            printf("Error while writing new block to disk\n");
+            return -1;
+          }
+          dest -> header.next_block = nextFreeBlock;
+          //updating values
+          f -> pos_in_file+=j;
+          f -> fcb -> fcb . size_in_bytes+=j;
+          f -> fcb -> fcb.size_in_blocks += 1;
+          f -> directory -> fcb . size_in_bytes += j;
+          f -> directory -> fcb . size_in_blocks += 1;
+          int recursiveWrite = SimpleFS_write(f, dataToWrite+j, size-j);   //keep writing on file
+          if(recursiveWrite == -1){
+            //printf("Something went wrong with recursive write\n");
+            return -1;
+          }
+          return j+recursiveWrite;     //should be exactly size
+      }
+      //everything clear
+      f -> pos_in_file += j;
+      f -> fcb -> fcb.size_in_bytes+=j;
+      f -> directory -> fcb . size_in_bytes += j;
+      return j;   //should be equal to size, number of bytes written
+  }
+
+
+
+
+
 }
 
 

@@ -25,7 +25,7 @@ void DiskDriver_init(DiskDriver* disk, int num_blocks){
 
 // LC
 // writes in dest the block read in the dist at block_num position
-// returns 1 if block read was written, 0 elsewhere
+// returns 1 if block read was written, so dest is valid, 0 elsewhere
 int DiskDriver_readBlock(DiskDriver* disk, void** dest, int block_num){
   if(block_num > disk -> header -> num_blocks){   //Tryin to read a block out of bounds, dest is invalid
     return 0;

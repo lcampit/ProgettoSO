@@ -2,6 +2,7 @@
 #include "./fileSystem.h"
 #define NUM_BLOCKS 512
 #define FILES_CREATED 3
+#define NUM_TRIES 45
 
 int main(int argc, char const *argv[]) {
 
@@ -41,6 +42,8 @@ int main(int argc, char const *argv[]) {
   char** names = (char**) malloc(sizeof(char*)*FILES_CREATED);
   int res = SimpleFS_readDir(names, rootHandler);
 
+  print_info_dh(rootHandler);
+
   if(res != 0) {
     printf("Something went wrong with readDir\n");
     return 1;
@@ -66,5 +69,35 @@ int main(int argc, char const *argv[]) {
     return 1;
   }
   printf("Done\n");
+
+  FileHandle* openedFileAgain = SimpleFS_openFile(rootHandler, names[0]);
+  if(openedFileAgain == NULL) {
+    printf("Something went wrong while opening file\n");
+    return 1;
+  }
+  print_info_fh(openedFileAgain);
+  printf("Will try to write something in %s file\n", names[0]);
+  char data[] = "Leonardo";       //sample data
+
+  int written = SimpleFS_write(openedFileAgain, data, strlen(data));
+  printf("%d byte were written in file\n", written);
+
+  print_info_dh(rootHandler);
+
+  print_info_fh(openedFileAgain);
+  written = 0;
+  //will try something silly to check how it goes
+  //Let's write data in file lots of times
+
+
+  int j;
+  for(j = 0; j < NUM_TRIES; j++){
+    written += SimpleFS_write(openedFileAgain, data, strlen(data));
+  }
+  printf("%d total byte were written, should be %d\n", written, (int)strlen(data)*NUM_TRIES);
+  print_info_fh(openedFileAgain);
+  //good measure
+  SimpleFS_close(openedFileAgain);
+
   return 0;
 }
