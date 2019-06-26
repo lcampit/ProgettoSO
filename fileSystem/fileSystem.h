@@ -18,7 +18,7 @@ typedef struct {
   int parent_directory;   //First block of the parent directory
   int block_in_disk;      // repeated position of the block on the disk
   char name[128];
-  int size_in_bytes;      //for directories, sum of bytes of all files in it
+  int size_in_bytes;        //for directories, sum of bytes of all files in it
   int size_in_blocks;      //for directories, sum of blocks of all files in it
   int is_dir;             // 0 if file, 1 if dir
 } FileControlBlock;
@@ -115,15 +115,17 @@ int SimpleFS_close(FileHandle* fh);
 // returns the number of bytes written or -1 if anything goes wrong
 int SimpleFS_write(FileHandle* f, void* data, int size);
 
-// writes in the file, at current position size bytes stored in data
-// overwriting and allocating new space if necessary
-// returns the number of bytes read
-int SimpleFS_read(FileHandle* f, void* data, int size);
 
-// returns the number of bytes read (moving the current pointer to pos)
-// returns pos on success
-// -1 on error (file too short)
-int SimpleFS_seek(FileHandle* f, int pos);
+// LC
+// reads in the preallocated data array, from current position of cursor,
+// data stored in the file provided
+// returns the number of bytes read or -1 if anything goes wrong
+int SimpleFS_read(FileHandle* file, void* data, int size);
+
+// LC
+// changes cursor position from actual to pos
+// returns pos on success, -1 if anything goes wront (file too short, ecc ecc)
+int SimpleFS_seek(FileHandle* file, int pos);
 
 // seeks for a directory in d. If dirname is equal to ".." it goes one level up
 // 0 on success, negative value on error

@@ -6,6 +6,7 @@
 
 int main(int argc, char const *argv[]) {
 
+  int res; //Error management
   SimpleFS* fs = (SimpleFS*) malloc(sizeof(SimpleFS));
   DiskDriver* disk = (DiskDriver*) malloc(sizeof(DiskDriver));
   DiskDriver_init(disk, NUM_BLOCKS);
@@ -40,7 +41,7 @@ int main(int argc, char const *argv[]) {
   print_info_fh(fh3);
 
   char** names = (char**) malloc(sizeof(char*)*FILES_CREATED);
-  int res = SimpleFS_readDir(names, rootHandler);
+  res = SimpleFS_readDir(names, rootHandler);
 
   print_info_dh(rootHandler);
 
@@ -96,6 +97,19 @@ int main(int argc, char const *argv[]) {
   }
   printf("%d total byte were written, should be %d\n", written, (int)strlen(data)*NUM_TRIES);
   print_info_fh(openedFileAgain);
+
+  printf("Tryin' reading from file\n");
+  char* toRead = (char*) malloc(sizeof(char)* 8);
+  res = SimpleFS_seek(openedFileAgain, 0);
+  if(res == -1){
+    printf("Something went wrong with seek\n");
+    return 1;
+  }
+
+  res = SimpleFS_read(openedFileAgain, toRead, 8);
+  printf("%d bytes have been read, should be %d\n", res, 8);
+  printf("Read: %s\n", toRead);
+
   //good measure
   SimpleFS_close(openedFileAgain);
 

@@ -253,6 +253,8 @@ int SimpleFS_close(FileHandle* fh){
 // if necessary, allocates new blocks
 // returns the number of bytes written or -1 if anything goes wrong
 
+//TODO  we might want to actually count how many non-null data is read and compute the read bytes accordingly
+
 int SimpleFS_write(FileHandle* f, void* data, int size){
   int cursorStart = f -> pos_in_file;             //start index for writing
   int i;                                          //Master Loop Variable
@@ -268,7 +270,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
   if(cursorStart < BLOCK_SIZE-sizeof(FileControlBlock) - sizeof(BlockHeader)){    //start writing in FirstFileBlock
     int h;
     for(h = 0; h < size; h++){      //start writing;
-      if(cursorStart+h<(BLOCK_SIZE-sizeof(BlockHeader))){    //can safely write in data
+      if(cursorStart+h<(BLOCK_SIZE-sizeof(FileControlBlock) - sizeof(BlockHeader))){    //can safely write in data
         ffb->data[cursorStart+h] = dataToWrite[h];
       }
       else break;
@@ -313,7 +315,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
         previous = dest;
         res = DiskDriver_readBlock(f -> sfs -> disk, (void**)&(dest), dest -> header.next_block);
         if(res != 1){   //Destination block is not written on disk, an error occured
-          printf("Block was not written\n");
+          //printf("Block was not written\n");
           return -1;
         }
       }
@@ -329,7 +331,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
       if(j == 0){   //relative cursor points at end of block, a new block must be created and data written in it
         int nextFreeBlock = DiskDriver_getFreeBlock(f -> sfs -> disk, f -> fcb -> fcb . block_in_disk);
         if(nextFreeBlock == -1){  //No space left on disk
-          printf("No space left on disk\n");
+          //printf("No space left on disk\n");
           return -1;
         }
 
@@ -399,12 +401,81 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
       f -> directory -> fcb . size_in_bytes += j;
       return j;   //should be equal to size, number of bytes written
   }
-
-
-
-
-
 }
+  // LC
+  // reads in the preallocated data array, from current position of cursor,
+  // data stored in the file provided
+  // returns the number of bytes read or -1 if anything goes wrong
+
+  //Might need some additional testing about error management
+  int SimpleFS_read(FileHandle* file, void* data, int size){
+    int absoluteCursor = file -> pos_in_file;
+    int i;
+    char* readInto = (char*) data;
+    if(absoluteCursor < BLOCK_SIZE-sizeof(FileControlBlock) - sizeof(BlockHeader)){   //will start reading from FirstFileBlock
+      for(i = 0; i < size; i++){
+        if(absoluteCursor+i < BLOCK_SIZE-sizeof(FileControlBlock) - sizeof(BlockHeader)){   //Can safely read in block
+          readInto[i] = file -> fcb -> data[absoluteCursor+i];
+          file -> pos_in_file += 1;
+        }
+        else break;
+      }
+      if(i < size){       //there's still something to read
+      int recursiveRead = SimpleFS_read(file, readInto+i, size-i);
+      if(recursiveRead == -1) return -1;
+      return i+recursiveRead;     //Should be equal to size
+      }
+      else {  //everything's done
+      return i;
+      }
+    }
+
+    else{     //Will start reading from a FileBlock
+
+      //First jump across as many block as needed
+      int relativeCursor = absoluteCursor - BLOCK_SIZE-sizeof(FileControlBlock) - sizeof(BlockHeader);
+      int num_jumps = relativeCursor % (BLOCK_SIZE-sizeof(BlockHeader));
+      relativeCursor -= num_jumps * (BLOCK_SIZE-sizeof(BlockHeader));
+      FileBlock* dest = (FileBlock*) file -> fcb;
+      int j, res;
+      for(j = 0; j < num_jumps; j++){
+        res = DiskDriver_readBlock(file -> sfs -> disk, (void**)&(dest), dest -> header.next_block);
+        if(res != 1){
+          printf("Block was not written on disk\n");
+          return -1;
+        }
+      }
+      int h;
+      for(h = 0; h < size; h++){
+        if(relativeCursor+h < (BLOCK_SIZE-sizeof(BlockHeader))){    //can safely read data
+          readInto[h] = dest -> data[relativeCursor+h];
+          file -> pos_in_file += 1;
+        }
+      }
+
+      if(h < size){ //There's still something to read
+        int recursiveRead = SimpleFS_read(file, readInto+h, size-h);
+        if(recursiveRead == -1) return -1;
+        return h+recursiveRead;   //should be equal to size
+      }
+
+      else{       //everything's done
+        return h;     //should be equal to size
+      }
+    }
+  }
+
+  // LC
+  // changes cursor position from actual to pos
+  // returns pos on success, -1 if anything goes wront (file too short, ecc ecc)
+  int SimpleFS_seek(FileHandle* file, int pos){
+    if(pos < 0) return -1; //Can't get beyond 0
+    int max = (BLOCK_SIZE-sizeof(FileControlBlock) - sizeof(BlockHeader)); //Dimension of FirstFileBlock data array
+    max += (file -> fcb -> fcb . size_in_blocks -1) * (BLOCK_SIZE-sizeof(BlockHeader));  //Dimension of FileBlock data array
+    if(pos > max) return -1; //File too short
+    file -> pos_in_file = pos;     //new cursos position
+    return pos;
+  }
 
 
 //****************** DEBUGGING FUNCTIONS **********************//
