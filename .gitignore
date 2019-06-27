@@ -2,6 +2,7 @@
 test
 test.*
 *.d
+temp.txt
 
 # Object files
 *.o

@@ -12,6 +12,8 @@ typedef struct {
   int block_in_file;  // position in the file, if first one (0) the struct contains a FCB
 } BlockHeader;
 
+//For directories, header -> next_block points to the next FirstDirectoryBlock in current dir
+
 
 // File (And Directory) Control Block
 typedef struct {
@@ -19,7 +21,7 @@ typedef struct {
   int block_in_disk;      // repeated position of the block on the disk
   char name[128];
   int size_in_bytes;        //for directories, sum of bytes of all files in it
-  int size_in_blocks;      //for directories, sum of blocks of all files in it
+  int size_in_blocks;      //for directories, number of directoryBlock linked
   int is_dir;             // 0 if file, 1 if dir
 } FileControlBlock;
 
@@ -41,7 +43,7 @@ typedef struct {
   BlockHeader header;
   FileControlBlock fcb;
   int num_entries;
-  int file_blocks[ (BLOCK_SIZE                                //indexes for FirstFileBlock of all files in directory
+  int file_blocks[ (BLOCK_SIZE                                //indexes for FirstFileBlock and FirstDirectoryBlock of all files/dir in directory
 		   -sizeof(BlockHeader)
 		   -sizeof(FileControlBlock)
 		    -sizeof(int))/sizeof(int) ];
@@ -50,7 +52,6 @@ typedef struct {
 // this is remainder block of a directory
 typedef struct {
   BlockHeader header;
-  int num_entries;
   int file_blocks[ (BLOCK_SIZE-sizeof(BlockHeader))/sizeof(int) ];  //indexes for FirstFileBlock of all files in directory
 } DirectoryBlock;
 /******************* stuff on disk END *******************/
@@ -80,6 +81,7 @@ typedef struct {
   int pos_in_dir;                  // absolute position of cursor in dir
   int pos_in_block;                // relative position of the cursor in the block
 } DirectoryHandle;
+
 
 
 // LC
@@ -123,19 +125,20 @@ int SimpleFS_write(FileHandle* f, void* data, int size);
 int SimpleFS_read(FileHandle* file, void* data, int size);
 
 // LC
-// changes cursor position from actual to pos
+// changes cursor position from current to pos
 // returns pos on success, -1 if anything goes wront (file too short, ecc ecc)
 int SimpleFS_seek(FileHandle* file, int pos);
 
-// seeks for a directory in d. If dirname is equal to ".." it goes one level up
-// 0 on success, negative value on error
-// it does side effect on the provided handle
- int SimpleFS_changeDir(DirectoryHandle* d, char* dirname);
+// LC
+// makes dir point to given directory inside current directory
+// if dirname is .. , dir will go one level up
+// returns 0 on success, 1 if anything happens
+int SimpleFS_changeDir(DirectoryHandle* dir, char* dirname);
 
-// creates a new directory in the current one (stored in fs->current_directory_block)
-// 0 on success
-// -1 on error
-int SimpleFS_mkDir(DirectoryHandle* d, char* dirname);
+// LC
+// creates a new directory in the current one, linked by dir -> dcb -> header -> next_block
+// returns 0 on success, -1 if anything happens
+int SimpleFS_mkDir(DirectoryHandle* dir, char* dirname);
 
 // removes the file in the current directory
 // returns -1 on failure 0 on success

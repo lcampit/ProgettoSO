@@ -23,7 +23,7 @@ int main(int argc, char const *argv[]) {
 
   FileHandle* fh = SimpleFS_createFile(rootHandler, name);
   if(fh == NULL){
-    printf("Something went wrong while creating file");
+    printf("Something went off while creating file\n");
     return 1;
   }
   print_info_fh(fh);
@@ -102,14 +102,13 @@ int main(int argc, char const *argv[]) {
   char* toRead = (char*) malloc(sizeof(char)* 8);
   res = SimpleFS_seek(openedFileAgain, 0);
   if(res == -1){
-    printf("Something went wrong with seek\n");
+    printf("Something went off with seek\n");
     return 1;
   }
 
   res = SimpleFS_read(openedFileAgain, toRead, 8);
   printf("%d bytes have been read, should be %d\n", res, 8);
   printf("Read: %s\n", toRead);
-
   //good measure
   SimpleFS_close(openedFileAgain);
 
