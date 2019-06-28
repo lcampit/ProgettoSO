@@ -137,12 +137,12 @@ int SimpleFS_changeDir(DirectoryHandle* dir, char* dirname);
 
 // LC
 // creates a new directory in the current one, linked by dir -> dcb -> header -> next_block
-// returns 0 on success, -1 if anything happens
+// returns 0 on success, 1 if anything happens
 int SimpleFS_mkDir(DirectoryHandle* dir, char* dirname);
 
-// removes the file in the current directory
-// returns -1 on failure 0 on success
-// if a directory, it removes recursively all contained files
+// LC
+// removes the provided file or directory, recursively removing all file in a directory
+// returns 0 on success, 1 if anything happens
 int SimpleFS_remove(SimpleFS* fs, char* filename);
 
 

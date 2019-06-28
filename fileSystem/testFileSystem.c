@@ -2,7 +2,7 @@
 #include "./fileSystem.h"
 #define NUM_BLOCKS 512
 #define FILES_CREATED 3
-#define NUM_TRIES 45
+#define NUM_TRIES 2
 
 int main(int argc, char const *argv[]) {
 
@@ -112,5 +112,47 @@ int main(int argc, char const *argv[]) {
   //good measure
   SimpleFS_close(openedFileAgain);
 
+  char nameDir[] = "Users";
+  res = SimpleFS_mkDir(rootHandler, nameDir);
+  if(res != 0){
+    printf("Something occured while creating directory\n");
+    return 1;
+  }
+  printf("%s directory created\n", nameDir);
+  printf("Before cd\n");
+  print_info_dh(rootHandler);
+  res = SimpleFS_changeDir(rootHandler, "Ciaone");
+  if(res != 1){
+    printf("Error in changeDir\n");
+    return 1;
+  }
+  printf("Cd didn't change dir, no dir named Ciaone found\n");
+  res = SimpleFS_changeDir(rootHandler, nameDir);
+  if(res != 0){
+    printf("Error in changeDir\n");
+    return 1;
+  }
+  printf("After cd\n");
+  print_info_dh(rootHandler);
+
+  printf("Creating a second directory in root\n");
+  res = SimpleFS_changeDir(rootHandler, "..");
+  if(res != 0){
+    printf("Error in changeDir\n");
+    return 1;
+  }
+  res = SimpleFS_mkDir(rootHandler, "Application");
+  if(res != 0){
+    printf("Something occured while creating directory\n");
+    return 1;
+  }
+  printf("All clear\n");
+  print_info_dh(rootHandler);
+  res = SimpleFS_changeDir(rootHandler, "Application");
+  if(res != 0){
+    printf("Error in changeDir\n");
+    return 1;
+  }
+  print_info_dh(rootHandler);
   return 0;
 }
