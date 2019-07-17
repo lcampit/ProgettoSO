@@ -15,7 +15,7 @@ int main(int argc, char const *argv[]) {
     printf("Amazing you got 'til here'\n");
   }
 
-  //Debugging print follows
+  //Various Debugging print follows
   print_info_dh(rootHandler);
   printf("%lu\n", sizeof(rootHandler -> dcb -> num_entries));
 
@@ -109,8 +109,6 @@ int main(int argc, char const *argv[]) {
   res = SimpleFS_read(openedFileAgain, toRead, 8);
   printf("%d bytes have been read, should be %d\n", res, 8);
   printf("Read: %s\n", toRead);
-  //good measure
-  SimpleFS_close(openedFileAgain);
 
   char nameDir[] = "Users";
   res = SimpleFS_mkDir(rootHandler, nameDir);
@@ -149,6 +147,19 @@ int main(int argc, char const *argv[]) {
   printf("All clear\n");
   print_info_dh(rootHandler);
   res = SimpleFS_changeDir(rootHandler, "Application");
+  if(res != 0){
+    printf("Error in changeDir\n");
+    return 1;
+  }
+  print_info_dh(rootHandler);
+
+  printf("Deleting first file of root %s \n", openedFileAgain->fcb -> fcb . name);
+  res = SimpleFS_rmFile(openedFileAgain);
+  if(res != 0){
+    printf("Something occured while deleting file\n");
+    return 1;
+  }
+  res = SimpleFS_changeDir(rootHandler, "..");
   if(res != 0){
     printf("Error in changeDir\n");
     return 1;

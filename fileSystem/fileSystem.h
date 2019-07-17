@@ -1,6 +1,7 @@
 #pragma once
 #include "bit_map.h"
 #include "diskDriver.h"
+#define FREE_BLOCK -1
 
 //TODO A format function, erases fs and reinitializes it (such as rm -rf --no-preserve-root /)
 
@@ -139,6 +140,19 @@ int SimpleFS_changeDir(DirectoryHandle* dir, char* dirname);
 // creates a new directory in the current one, linked by dir -> dcb -> header -> next_block
 // returns 0 on success, 1 if anything happens
 int SimpleFS_mkDir(DirectoryHandle* dir, char* dirname);
+
+// BEGIN EXPERIMENTAL
+// LC
+// Removes the given file and all his blocks from his dir
+// Frees the FileHandle provided
+// Returns 0 on success, 1 if anything happens
+int SimpleFS_rmFile(FileHandle* file);
+
+// LC
+// Removes the given dir and all his contents (recursively) from fs
+// returns 0 on success, 1 if anything happens
+int SimpleFS_rmDir(DirectoryHandle* dir);
+//END EXPERIMENTAL
 
 // LC
 // removes the provided file or directory, recursively removing all file in a directory
