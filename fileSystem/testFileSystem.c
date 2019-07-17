@@ -41,7 +41,7 @@ int main(int argc, char const *argv[]) {
   print_info_fh(fh3);
 
   char** names = (char**) malloc(sizeof(char*)*FILES_CREATED);
-  res = SimpleFS_readDir(names, rootHandler);
+  res = SimpleFS_readDir(names, rootHandler, 0);
 
   print_info_dh(rootHandler);
 
@@ -109,8 +109,9 @@ int main(int argc, char const *argv[]) {
   res = SimpleFS_read(openedFileAgain, toRead, 8);
   printf("%d bytes have been read, should be %d\n", res, 8);
   printf("Read: %s\n", toRead);
+  SimpleFS_close(openedFileAgain);
 
-  char nameDir[] = "Users";
+  char nameDir[] = "UsersDir";
   res = SimpleFS_mkDir(rootHandler, nameDir);
   if(res != 0){
     printf("Something occured while creating directory\n");
@@ -124,6 +125,7 @@ int main(int argc, char const *argv[]) {
     printf("Error in changeDir\n");
     return 1;
   }
+  free(names);
   printf("Cd didn't change dir, no dir named Ciaone found\n");
   res = SimpleFS_changeDir(rootHandler, nameDir);
   if(res != 0){
@@ -153,17 +155,34 @@ int main(int argc, char const *argv[]) {
   }
   print_info_dh(rootHandler);
 
-  printf("Deleting first file of root %s \n", openedFileAgain->fcb -> fcb . name);
-  res = SimpleFS_rmFile(openedFileAgain);
-  if(res != 0){
-    printf("Something occured while deleting file\n");
-    return 1;
-  }
   res = SimpleFS_changeDir(rootHandler, "..");
   if(res != 0){
     printf("Error in changeDir\n");
     return 1;
   }
+
+  FileHandle* fileToRemove = SimpleFS_openFile(rootHandler, "Users");
+
+  printf("Deleting first file of root %s \n", fileToRemove->fcb -> fcb . name);
+  res = SimpleFS_rmFile(fileToRemove);
+  if(res != 0){
+    printf("Something occured while deleting file\n");
+    return 1;
+  }
+  char** newNames = (char**) malloc(sizeof(char*)*10);
+  res = SimpleFS_readDir(newNames, rootHandler, 1);
+  if(res != 0){
+    printf("Error while reading file names\n");
+    return 1;
+  }
+  else {
+
   print_info_dh(rootHandler);
+
+  for(i = 0; i < FILES_CREATED+1; i++){
+    printf("%s\n", newNames[i]);
+  }
+}
+  free(newNames);
   return 0;
 }

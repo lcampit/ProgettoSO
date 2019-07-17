@@ -98,9 +98,10 @@ DirectoryHandle* SimpleFS_init(SimpleFS* fs, DiskDriver* disk);
 FileHandle* SimpleFS_createFile(DirectoryHandle* dir, const char* filename);
 
 // LC
-// writes in the preallocated blocks array the names of all files in dir
+// writes in the preallocated blocks array the names of all files ,if flag
+// equals 0, or all files and dirs if flag equals 1, in dir
 // returns 0 if anything is ok, 1 otherwise
-int SimpleFS_readDir(char** names, DirectoryHandle* dir);
+int SimpleFS_readDir(char** names, DirectoryHandle* dir, int flag);
 
 // LC
 // Creates a FileHandle about an existing file in the directory dir
