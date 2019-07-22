@@ -12,7 +12,7 @@ DirectoryHandle* SimpleFS_init(SimpleFS* fs, DiskDriver* disk){
   //initializing fileSystem, linking disk
   fs -> disk = disk;
   //Creating root
-  FirstDirectoryBlock* root = (FirstDirectoryBlock*) malloc(sizeof(FirstDirectoryBlock));
+  FirstDirectoryBlock* root = (FirstDirectoryBlock*) malloc(sizeof(FirstDirectoryBlock));   //live long and prosper
   root -> header.previous_block = 0;//no previous block for root
   root -> header.next_block = 0;    //no more blocks, for now
   root -> header.block_in_file = 0; //Block contains a fcb
@@ -57,9 +57,9 @@ DirectoryHandle* SimpleFS_init(SimpleFS* fs, DiskDriver* disk){
 
 // LC
 // creates an empty first file block in directorty dir with name filename
-// returns NULL if anything happens (no free space, file existing)
+// if file exists, returns a file handle for the given file
+// returns NULL if anything happens (no free space, etc)
 
-//IDEA we might want to open a given file, if that alread exists
 FileHandle* SimpleFS_createFile(DirectoryHandle* dir, const char* filename){
 
   int nextFreeBlock = DiskDriver_getFreeBlock(dir -> sfs -> disk, dir -> dcb -> fcb . block_in_disk);
@@ -78,7 +78,12 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* dir, const char* filename){
   int i;
   for(i = 0; i < dir -> dcb -> num_entries; i++){
     if(strncmp(names[i], filename, strlen(filename)) == 0){   //same name file found
-      return NULL;
+      //we'll open the file and return his fileHandle
+      FileHandle* openedFile = SimpleFS_openFile(dir, filename);
+      if(openedFile == NULL){
+        return NULL;    //Something occured while opening file
+      }
+      return openedFile;
     }
   }
   //No same name file found, proceed with creation
@@ -117,7 +122,14 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* dir, const char* filename){
 
   //Will now check if the file can be stored in an existant (First)DirectoryBlock or a new DirectoryBlock must be created
   if(dir -> dcb -> num_entries < (BLOCK_SIZE-sizeof(BlockHeader)-sizeof(FileControlBlock)-sizeof(int))/sizeof(int)){//Can safely write in file_blocks of FirstDirectoryBlock
-    //TODO we may want to write the new file in a position where FREE_BLOCK is written, so where a previous file was before being deleted
+    int h;
+    for(h = 0; h < dir -> dcb -> num_entries; h++){
+      if(dir -> dcb -> file_blocks[h] == FREE_BLOCK){
+          dir -> dcb -> file_blocks[h] = nextFreeBlock;
+          dir -> dcb -> num_entries ++;
+          return fh;
+      }
+    }
     dir -> dcb -> file_blocks[dir -> dcb -> num_entries] = nextFreeBlock;
     dir -> dcb -> num_entries += 1;
     return fh;      //Everything's done
@@ -126,7 +138,6 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* dir, const char* filename){
     int index = dir -> dcb -> num_entries - (BLOCK_SIZE-sizeof(BlockHeader)-sizeof(FileControlBlock)-sizeof(int))/sizeof(int);
     DirectoryBlock* dest = (DirectoryBlock*) dir -> dcb;
     int num = 0 , previous_index = 0;
-    //TODO check in every block we jump by if a FREE_BLOCK is in there, if so, write the new file index there
     while(dest -> header.next_block != 0){
       previous_index = dest -> header.next_block;
       res = DiskDriver_readBlock(dir -> sfs -> disk, (void**)&(dest), dest -> header.next_block);   //Skips through DirectoryBlock
@@ -135,13 +146,28 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* dir, const char* filename){
         DiskDriver_freeBlock(dir -> sfs -> disk, nextFreeBlock);
         return NULL;
       }
+      int h;
+      for(h = 0; h < (BLOCK_SIZE-sizeof(BlockHeader))/sizeof(int); h++){
+        if(dest -> file_blocks[h] == FREE_BLOCK){ //previously deleted block was found, using that space
+          dest -> file_blocks[h] = nextFreeBlock;
+          dir -> dcb -> num_entries++;
+          return fh;
+        }
+      }
       num++;
     }
     //If we are here, we found the last DirectoryBlock written on disk
     //We must check if the DirectoryBlock can contain another FirstFileBlock or if a new one must be created
     int relativeIndex = index - num*((BLOCK_SIZE-sizeof(BlockHeader))/sizeof(int));   //index relative to DirectoryBlock reached
     if(relativeIndex < (BLOCK_SIZE-sizeof(BlockHeader))/sizeof(int)){//we can safely add to dest our file
-      //TODO check if a FREE_BLOCK index is in here and replace it instead of stuffing the index file a the end of file
+      int h;
+      for(h = 0; h < relativeIndex; h++){
+        if(dest -> file_blocks[h] == FREE_BLOCK){
+          dest -> file_blocks[h] = nextFreeBlock;
+          dir -> dcb -> num_entries++;
+          return fh;
+        }
+      }
       dest -> file_blocks[relativeIndex] = nextFreeBlock;
       dir -> dcb -> num_entries++;
       return fh;
@@ -208,33 +234,26 @@ int SimpleFS_readDir(char** names, DirectoryHandle* dir, int flag){
       printf("Block was not written on disk\n");
       return 1;
     }
-    char* src;
-    switch (flag) {
-      case 0 :
-        if(dest -> fcb . is_dir == 0){     //if it's a firstFileBlock
-          src = dest -> fcb.name;
-          names[i-numFreeBlocks] = src;
-          break;
-        }
-        default:
-          src = dest -> fcb.name;
-          names[i-numFreeBlocks] = src;
-          break;
-    }
+    if(dest -> fcb . is_dir == 0) names[i - numFreeBlocks] = dest -> fcb . name;
+    else if(flag == 0) continue;    ///skips dirs
+    else names[i - numFreeBlocks] = dest -> fcb . name;
   }
   else break;
   }
     if(i < max){    //we must check in a DirectoryBlock
-          DirectoryBlock* dirAux = (DirectoryBlock*) dir -> dcb;
-          while(dirAux -> header.next_block != 0){
-            res = DiskDriver_readBlock(dir -> sfs -> disk, (void**)&(dirAux), dirAux -> header.next_block);
+          int nextDirBlock = dir -> dcb -> header . next_block;
+          DirectoryBlock dirBlock;
+          DirectoryBlock* dirAux = &dirBlock;
+          while(nextDirBlock != 0){
+            res = DiskDriver_readBlock(dir -> sfs -> disk, (void**)&(dirAux), nextDirBlock);
+            nextDirBlock =  dirAux-> header . next_block;
             if(res != 1){
               printf("Block was not written on disk\n");
               return 1;
             }
             for(; i < max; i++){
               if(i < (BLOCK_SIZE-sizeof(BlockHeader))/sizeof(int)){   //can still access in DirectoryBlock
-              int index = dir -> dcb -> file_blocks[i];
+              int index = dirAux -> file_blocks[i];
               if(index == FREE_BLOCK){
                 max++;    //So dangerous it might just work
                 numFreeBlocks++;
@@ -246,19 +265,9 @@ int SimpleFS_readDir(char** names, DirectoryHandle* dir, int flag){
                 printf("Block was not written on disk\n");
                 return 1;
               }
-              char* src;
-              switch (flag) {
-                case 0 :
-                  if(dest -> fcb . is_dir == 0){     //if it's a firstFileBlock
-                    src = dest -> fcb.name;
-                    names[i-numFreeBlocks] = src;
-                    break;
-                  }
-                  default:
-                    src = dest -> fcb.name;
-                    names[i-numFreeBlocks] = src;
-                    break;
-              }
+              if(dest -> fcb . is_dir == 0) names[i - numFreeBlocks] = dest -> fcb . name;
+              else if(flag == 0) continue;
+              else names[i - numFreeBlocks] = dest -> fcb . name;
             }
             else break;     //skip to next DirectoryBlock
         }
@@ -275,11 +284,14 @@ FileHandle* SimpleFS_openFile(DirectoryHandle* dir, const char* filename){
   //First we check if the provided file exists
   FirstDirectoryBlock* fdb = dir -> dcb;
   FirstFileBlock* dest = (FirstFileBlock*) malloc(sizeof(FileBlock));
-  int i, res;
-  for(i = 0; i < fdb -> num_entries; i++){
+  int i, res, max = fdb -> num_entries;
+  for(i = 0; i < max; i++){
     //retrieves file block
     int index = fdb -> file_blocks[i];
-    //TODO check for FREE_BLOCK blocks, we have to skip those
+    if(index == FREE_BLOCK){
+      max++;
+      continue;
+    }
     res = DiskDriver_readBlock(dir -> sfs -> disk, (void**)&(dest), index);
     if(res != 1){
       printf("File Block was not written on disk\n");
@@ -319,8 +331,6 @@ int SimpleFS_close(FileHandle* fh){
 // writes in the file, from cursor position for size bytes, the data in data
 // if necessary, allocates new blocks
 // returns the number of bytes written or -1 if anything goes wrong
-
-//TODO  we might want to actually count how many non-null data is read and compute the read bytes accordingly
 
 int SimpleFS_write(FileHandle* f, void* data, int size){
   int cursorStart = f -> pos_in_file;             //start index for writing
@@ -569,11 +579,15 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
       //We have to look for a directory with the given name in dir, return 1 if
       //it does not exists, else update dir and return 0
 
-      int i, res;
+      int i, res, max = dir -> dcb -> num_entries;
       FirstDirectoryBlock* dest = (FirstDirectoryBlock*) dir->dcb;
-      for(i = 0; i < dir->dcb->num_entries; i++){
+      for(i = 0; i < max; i++){
         if(i < ((BLOCK_SIZE-sizeof(BlockHeader)-sizeof(FileControlBlock)-sizeof(int))/sizeof(int) )){ //Can safely read inside the FirstDirectoryBlock
           int index = dir -> dcb ->file_blocks[i];
+          if(index == FREE_BLOCK){  //skips previously deleted blocks
+            max++;
+            continue;
+          }
           res = DiskDriver_readBlock(dir -> sfs -> disk, (void**)&(dest), index);
           if(res != 1){
             //block was not written on disk, something occured
@@ -592,7 +606,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
         }
         else break;
       }
-      if(i < dir->dcb->num_entries){  //There are still directory blocks to check
+      if(i < max){  //There are still directory blocks to check
         DirectoryBlock* src = (DirectoryBlock*) dest;
         int offset = (BLOCK_SIZE-sizeof(BlockHeader)-sizeof(FileControlBlock)-sizeof(int))/sizeof(int);
         int size_dir = (BLOCK_SIZE-sizeof(BlockHeader))/sizeof(int);
@@ -602,9 +616,13 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
           //Block was not written on disk, an error occured
           return 1;
         }
-        for(; i < dir -> dcb -> num_entries; i++){      //But i still haven't found what i'm looking for
+        for(; i < max; i++){      //But i still haven't found what i'm looking for
           if(i - offset - num_jumps*size_dir< ((BLOCK_SIZE-sizeof(BlockHeader))/sizeof(int))){//Can safely read in directory block
             int index = src ->file_blocks[i - offset - num_jumps*size_dir];
+            if(index == FREE_BLOCK){
+              continue;
+              max++;
+            }
             res = DiskDriver_readBlock(dir-> sfs -> disk, (void**)&(dest), index);
             if(res != 1){
               //Block was not written on disk, an error occured
@@ -677,11 +695,20 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
     //New dir block created, linking with previous one
     if(dir -> dcb -> num_entries < ((BLOCK_SIZE-sizeof(BlockHeader)-sizeof(FileControlBlock)-sizeof(int))/sizeof(int) )){
       //write new block in FirstDirectoryBlock
-      //TODO check for FREE_BLOCKs in the dir and write on those spots
-      dir -> dcb -> file_blocks[dir -> dcb -> num_entries] = nextFreeBlock;
-      dir -> dcb -> num_entries++;
-      dir -> dcb -> fcb . size_in_blocks++;
-      return 0;
+      int h;
+      for(h = 0; h < dir->dcb->num_entries; h++){
+        if(dir -> dcb -> file_blocks[h] == FREE_BLOCK){
+          //previously deleted block found
+          dir -> dcb -> file_blocks[h] = nextFreeBlock;
+          dir -> dcb -> num_entries++;
+          dir -> dcb -> fcb.size_in_blocks++;
+          return 0;
+        }
+      }
+        dir -> dcb -> file_blocks[dir -> dcb -> num_entries] = nextFreeBlock;
+        dir -> dcb -> num_entries++;
+        dir -> dcb -> fcb . size_in_blocks++;
+        return 0;
     }
     else{
       DirectoryBlock* dest = (DirectoryBlock*) dir -> dcb;
@@ -714,11 +741,20 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
         int num = 0;
         int previous_index = dir -> dcb -> fcb . block_in_disk;
         int numBlock = 1;
-        while(dest -> header . next_block != 0){
+        while(dest -> header . next_block != 0){      //skips through all directory blocks, looking for a free space in that block
           previous_index = dest -> header.next_block;
           res = DiskDriver_readBlock(dir -> sfs -> disk, (void**) &(dest), dest -> header . next_block);
           if(res != 1){
             return 1;  //Something went wrong with reading block
+          }
+          int j;
+          for(j = 0; j < (BLOCK_SIZE-sizeof(BlockHeader))/sizeof(int); j++){
+            if(dest -> file_blocks[j] == FREE_BLOCK){
+              dest -> file_blocks[j] = nextFreeBlock;
+              dir -> dcb -> num_entries++;
+              dir -> dcb -> fcb.size_in_blocks++;
+              return 0;
+            }
           }
           num++;
           numBlock++;
@@ -727,7 +763,15 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
         int offset = (BLOCK_SIZE-sizeof(BlockHeader)-sizeof(FileControlBlock)-sizeof(int))/sizeof(int);
         int relativeIndex = dir -> dcb -> num_entries - offset - num*((BLOCK_SIZE-sizeof(BlockHeader))/sizeof(int));
         if(relativeIndex < (BLOCK_SIZE-sizeof(BlockHeader))/sizeof(int)){ //Can write in dest
-          //TODO check for FREE_BLOCKs in dir and write in those spots the new FirstDirectoryBlock
+          int j;
+          for(j = 0; j < relativeIndex; j++){
+            if(dest -> file_blocks[j] == FREE_BLOCK){
+              dest -> file_blocks[relativeIndex] = nextFreeBlock;
+              dir -> dcb -> num_entries++;
+              dir -> dcb -> fcb.size_in_blocks++;
+              return 0;
+            }
+          }
           dest -> file_blocks[relativeIndex] = nextFreeBlock;
           //updating contents
           dir -> dcb -> num_entries++;
@@ -792,45 +836,62 @@ void print_info_dh(DirectoryHandle* dh){
 // BEGIN EXPERIMENTAL
 // LC
 // Removes the given file and all his blocks from his dir
-// Frees the FileHandle provided
 // Returns 0 on success, 1 if anything happens
-int SimpleFS_rmFile(FileHandle* file){
-  if(file == NULL) return 0;  //Nothing to do here
+int SimpleFS_rmFile(DirectoryHandle* dir, char* filename){
+  if(dir == NULL || filename == NULL) return 0;  //Nothing to do here
+  int res;
+  FirstDirectoryBlock* container = dir -> dcb;
+  //Checks if file is in provided dir
+  char** names = (char**) malloc(sizeof(char*)*dir -> dcb -> num_entries);
+  res = SimpleFS_readDir(names, dir, 0);
+  if(res != 0) return 1;    //something happened with readDir
+  int j, found = 0;
+  for(j = 0; j < dir -> dcb -> num_entries; j++){
+    if(names[j] != NULL && strncmp(names[j], filename, strlen(filename)) == 0){
+      found = 1;
+      break;
+    }
+  }
+  if(!found) return 0; //404 file not found
+  FirstFileBlock* file;
 
-  FirstDirectoryBlock* container = file -> directory;
-  int indexOfFile = file -> fcb -> fcb . block_in_disk;
+  //int indexOfFile = file -> fcb -> fcb . block_in_disk;
   FileBlock* auxFile;
   //Will now look for our file in the directory and replace it with FREE BLOCK
-  int i, num_entries =  container -> num_entries, res;
+  int i, num_entries =  container -> num_entries;
   for(i = 0; i < num_entries; i++){
     if(i < (BLOCK_SIZE-sizeof(BlockHeader)-sizeof(FileControlBlock)-sizeof(int))/sizeof(int)){//Can safely read in FirstDirectoryBlock
-      printf("%d\n", container -> file_blocks[i]);
-      if(container ->file_blocks[i] == indexOfFile){    //File found, removing it and updating directory params
+      if(dir -> dcb -> file_blocks[i] == FREE_BLOCK){
+        num_entries++;
+        continue;
+      }
+      res = DiskDriver_readBlock(dir -> sfs -> disk, (void**)&(file), dir -> dcb -> file_blocks[i]);
+      if(res != 1) return 0; //error while reading block
+      if(file -> fcb . is_dir == 0 && strncmp(filename, file -> fcb . name, strlen(filename)) == 0){    //File found, removing it and updating directory params
         container->file_blocks[i] = FREE_BLOCK;
         //Updating values
         container-> num_entries --;
-        container-> fcb . size_in_bytes -= file -> fcb -> fcb .size_in_bytes;
-        //Freeing file from disk and fileHandle
-        int nextBlock = file -> fcb -> header . next_block;
-        res = DiskDriver_freeBlock(file -> sfs -> disk, indexOfFile);
+        container-> fcb . size_in_bytes -= file -> fcb .size_in_bytes;
+        //Freeing file from disk
+        int nextBlock = file -> header . next_block;
+        res = DiskDriver_freeBlock(dir -> sfs -> disk, file -> fcb . block_in_disk);
         if(res != 0){
           return 1;
         }
         while(nextBlock!=0){    //let's free all file blocks;
-          res = DiskDriver_readBlock(file -> sfs -> disk, (void**)&(auxFile), nextBlock);
+          res = DiskDriver_readBlock(dir -> sfs -> disk, (void**)&(auxFile), nextBlock);
           if(res!=1){
             //Error occured with readBlock
             return 1;
           }
           int prev = nextBlock;
           nextBlock = auxFile -> header . next_block;
-          res = DiskDriver_freeBlock(file -> sfs -> disk, prev);
+          res = DiskDriver_freeBlock(dir -> sfs -> disk, prev);
           if(res!= 0){
             //Error with freeBlock
             return 1;
           }
         }
-        SimpleFS_close(file);
         return 0;
       }
     }
@@ -838,11 +899,8 @@ int SimpleFS_rmFile(FileHandle* file){
   }
   //if here, file was not found in FirstDirectoryBlock
   //We need to look through the others blocks
-  if(container -> header . next_block == 0){    //Reached end of dir, no file found, error
-    return 1;
-  }
   DirectoryBlock* aux;
-  res = DiskDriver_readBlock(file -> sfs -> disk, (void**)&(aux), container -> header . next_block);
+  res = DiskDriver_readBlock(dir -> sfs -> disk, (void**)&(aux), container -> header . next_block);
   if(res != 1){   //Error on reading block
     return 1;
   }
@@ -852,14 +910,20 @@ int SimpleFS_rmFile(FileHandle* file){
   int blocksInDirBlock = (BLOCK_SIZE-sizeof(BlockHeader))/sizeof(int);
   for(; i < num_entries; i++){
     if(i - offset - num * blocksInDirBlock < (BLOCK_SIZE-sizeof(BlockHeader))/sizeof(int)){   //can safely read from current dir block
-      if(aux -> file_blocks[i-offset] == indexOfFile){   //file found
+      if(aux->file_blocks[i] == FREE_BLOCK){
+        num_entries++;
+        continue;
+      }
+      res = DiskDriver_readBlock(dir -> sfs -> disk, (void**)&(file), aux -> file_blocks[i]);
+      if(res != 1) return 1; //Something went off with read block
+      if(file -> fcb . is_dir == 0 && strncmp(filename, file -> fcb. name, strlen(filename)) == 0){   //file found
         aux -> file_blocks[i-offset] = FREE_BLOCK;
         container-> num_entries --;
-        container-> fcb . size_in_bytes -= file -> fcb -> fcb .size_in_bytes;
+        container-> fcb . size_in_bytes -= file -> fcb .size_in_bytes;
 
         // we want to remove a dirBlock if it's now empty (so it's the last one in the chain)
         if(aux -> header.next_block == 0 && (container->num_entries - offset) % blocksInDirBlock == 0){ //aux is now an empty dir block, I'll remove it
-          res = DiskDriver_freeBlock(file -> sfs -> disk, previous -> header . next_block);
+          res = DiskDriver_freeBlock(dir -> sfs -> disk, previous -> header . next_block);
           if(res != 0){ //Error occured while deleting dir block
             return 1;
           }
@@ -867,26 +931,25 @@ int SimpleFS_rmFile(FileHandle* file){
           container -> fcb . size_in_blocks --;
         }
         //Freeing file from disk and fileHandle
-        int nextBlock = file -> fcb -> header . next_block;
-        res = DiskDriver_freeBlock(file -> sfs -> disk, indexOfFile);
+        int nextBlock = file -> header . next_block;
+        res = DiskDriver_freeBlock(dir -> sfs -> disk, file -> fcb . block_in_disk);
         if(res != 0){
           return 1;
         }
         while(nextBlock!=0){    //let's free all file blocks;
-          res = DiskDriver_readBlock(file -> sfs -> disk, (void**)&(auxFile), nextBlock);
+          res = DiskDriver_readBlock(dir -> sfs -> disk, (void**)&(auxFile), nextBlock);
           if(res!=1){
             //Error occured with readBlock
             return 1;
           }
           int prev = nextBlock;
           nextBlock = auxFile -> header . next_block;
-          res = DiskDriver_freeBlock(file -> sfs -> disk, prev);
+          res = DiskDriver_freeBlock(dir -> sfs -> disk, prev);
           if(res!= 0){
             //Error with freeBlock
             return 1;
           }
         }
-        SimpleFS_close(file);
         return 0;
       }
     }
@@ -895,7 +958,7 @@ int SimpleFS_rmFile(FileHandle* file){
         return 1;
       }
       previous = aux;
-      res = DiskDriver_readBlock(file -> sfs -> disk, (void**)&(aux), aux -> header . next_block);
+      res = DiskDriver_readBlock(dir -> sfs -> disk, (void**)&(aux), aux -> header . next_block);
       if(res != 1){     //Error while reading dir from disk
         return 1;
       }
@@ -906,6 +969,126 @@ int SimpleFS_rmFile(FileHandle* file){
   return 1;
 }
 
+// LC
+// Removes the given dir and all his contents (recursively) from fs
+// returns 0 on success, 1 if anything gows wrong
+// Side-effect on dir, it will point to parent directory
+
+int SimpleFS_rmDir(DirectoryHandle* dir){
+  if(dir == NULL || dir -> directory == NULL) return 0; //Nothing to do here, can't remove root or null dir
+
+  int res, i, num_entries = dir -> dcb -> num_entries;
+  char** filenames = (char**) malloc(sizeof(char*) * num_entries);
+  res = SimpleFS_readDir(filenames, dir, 0);    //we'll read all files inside this dir
+  for(i = 0; i < num_entries; i++){
+    if(filenames[i] != NULL){
+      res = SimpleFS_rmFile(dir, filenames[i]);
+      if(res != 0){ //Something happened while removing file
+        return 1;
+      }
+    }
+  }
+    free(filenames);
+    //All file eliminated, eliminating now dirs
+    //Now readDir on dir returns only FirstDirectoryBlock
+
+    //Removing dirs in dir
+    char** dirnames = (char**) malloc(sizeof(char*) * dir -> dcb -> num_entries);
+    for(i = 0; i < dir -> dcb -> num_entries; i++){
+      if(dirnames[i] != NULL){
+        res = SimpleFS_changeDir(dir, dirnames[i]);
+        if(res != 0) return 1;    //Something wrong with changeDir
+        res = SimpleFS_rmDir(dir);
+        if(res != 0) return 1;    //something wrong with rmDir
+        res = SimpleFS_changeDir(dir, "..");
+        if(res != 0) return 1;    //something wrong with changeDir
+      }
+    }
+    free(dirnames);
+
+    //Eliminating dir
+    int indexOfDir = dir -> dcb -> fcb . block_in_disk;
+    res = SimpleFS_changeDir(dir, "..");
+    if(res != 0) return 1;
+    int max = dir -> dcb -> num_entries;
+    for(i = 0; i < max; i++){
+      if(i < (BLOCK_SIZE-sizeof(BlockHeader)-sizeof(FileControlBlock)-sizeof(int))/sizeof(int)){
+        int index = dir -> dcb -> file_blocks[i];
+        if(index == FREE_BLOCK){
+          max++;
+          continue;
+        }
+        if(index == indexOfDir){
+          dir -> dcb -> file_blocks[i] = FREE_BLOCK;
+          dir -> dcb -> num_entries--;
+          res = DiskDriver_freeBlock(dir -> sfs -> disk, indexOfDir);
+          if(res != 0) return 1;
+          return 0;
+        }
+      }
+      else break;
+  }
+    //if here, dir not found, must look in another directory block
+    DirectoryBlock dirBlock;
+    DirectoryBlock* aux = &dirBlock;
+    int nextDirBlock = dir -> dcb -> header . next_block;
+    int num_jumps = 0, offset = (BLOCK_SIZE-sizeof(BlockHeader)-sizeof(FileControlBlock)-sizeof(int))/sizeof(int);
+    while(nextDirBlock != 0){
+      res = DiskDriver_readBlock(dir -> sfs -> disk, (void**)&(aux), nextDirBlock);
+      if(res != 1) return 1;
+    }
+    for(; i < max; i++){
+      if(i -offset - num_jumps*(BLOCK_SIZE-sizeof(BlockHeader))/sizeof(int) < (BLOCK_SIZE-sizeof(BlockHeader))/sizeof(int)){
+        if(aux -> file_blocks[i] == FREE_BLOCK){
+          max++;
+          continue;
+        }
+        else if(aux -> file_blocks[i] == indexOfDir){
+          aux -> file_blocks[i] = FREE_BLOCK;
+          dir -> dcb -> num_entries--;
+          res = DiskDriver_freeBlock(dir -> sfs -> disk, indexOfDir);
+          if(res != 0) return 1;
+          return 0;
+        }
+      }
+      else {
+        num_jumps++;
+        nextDirBlock = aux -> header . next_block;
+        break;
+      }
+    }
+    return 0;
+
+}
+// LC
+// prints all files and dir in provided directory using SimpleFS_readDir
+// returns 0 on success, 1 if anything happens
+int SimpleFS_ls(DirectoryHandle* dh){
+  if(dh == NULL) return 0; //nothing to do here
+  char** names = (char**) malloc(sizeof(char*)* dh -> dcb -> num_entries);
+  int res = SimpleFS_readDir(names, dh, 1);
+  if(res != 0) return 1;
+  int i;
+  for(i = 0; i < dh -> dcb -> num_entries; i++){
+    if(names[i] != NULL) printf("%s  ", names[i]);
+  }
+  printf("\n");
+  free(names);
+  return 0;
+}
+
+// LC
+// frees all memory used and removes fileSystem and Disk
+// returns 0 on success, 1 if anything goes wrong
+// can only be used on root
+// final destination
+int SimpleFS_rmslash(DirectoryHandle* root){ //finally removing root, fs and disk
+    int res = DiskDriver_delete(root -> sfs -> disk);
+    if(res != 0) return 1;
+    free(root -> sfs);
+    free(root);     //Rest in peace
+    return 0;
+}
 
 // LC
 // prints info about blockHeader values, checks if anything is correct

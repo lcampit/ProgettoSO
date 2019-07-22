@@ -55,3 +55,7 @@ int DiskDriver_freeBlock(DiskDriver* disk, int block_num);
 // returns an index for the first free block in the bitmap
 // returns -1 if there aren't any
 int DiskDriver_getFreeBlock(DiskDriver* disk, int start);
+
+// LC
+// destroys diskDriver, returns 0 on success, 1 if anything happens
+int DiskDriver_delete(DiskDriver* disk);

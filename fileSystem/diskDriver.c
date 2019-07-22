@@ -84,3 +84,13 @@ int DiskDriver_getFreeBlock(DiskDriver* disk, int start){
   }
   return -1;          //Returns -1 if memory is full, no free blocks available
 }
+
+
+// LC
+// destroys diskDriver, returns 0 on success, 1 if anything happens
+int DiskDriver_delete(DiskDriver* disk){
+  free(disk -> header);
+  free(disk -> blocks);
+  free(disk -> map);
+  return 0;
+}

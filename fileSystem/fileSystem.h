@@ -3,8 +3,6 @@
 #include "diskDriver.h"
 #define FREE_BLOCK -1
 
-//TODO A format function, erases fs and reinitializes it (such as rm -rf --no-preserve-root /)
-
 // occupies the first portion of each block in the disk
 // represents a chained list of blocks
 typedef struct {
@@ -94,7 +92,8 @@ DirectoryHandle* SimpleFS_init(SimpleFS* fs, DiskDriver* disk);
 
 // LC
 // creates an empty first file block in directorty dir with name filename
-// returns NULL if anything happens (no free space, file existing)
+// if file exists, returns a file handle for the given file
+// returns NULL if anything happens (no free space, etc)
 FileHandle* SimpleFS_createFile(DirectoryHandle* dir, const char* filename);
 
 // LC
@@ -144,14 +143,15 @@ int SimpleFS_mkDir(DirectoryHandle* dir, char* dirname);
 
 // BEGIN EXPERIMENTAL
 // LC
+// LC
 // Removes the given file and all his blocks from his dir
-// Frees the FileHandle provided
 // Returns 0 on success, 1 if anything happens
-int SimpleFS_rmFile(FileHandle* file);
+int SimpleFS_rmFile(DirectoryHandle* dir, char* filename);
 
 // LC
 // Removes the given dir and all his contents (recursively) from fs
-// returns 0 on success, 1 if anything happens
+// returns 0 on success, 1 if anything gows wrong
+// Side-effect on dir, it will point to parent directory
 int SimpleFS_rmDir(DirectoryHandle* dir);
 //END EXPERIMENTAL
 
@@ -159,6 +159,18 @@ int SimpleFS_rmDir(DirectoryHandle* dir);
 // removes the provided file or directory, recursively removing all file in a directory
 // returns 0 on success, 1 if anything happens
 int SimpleFS_remove(SimpleFS* fs, char* filename);
+
+// LC
+// prints all files and dir in provided directory using SimpleFS_readDir
+// returns 0 on success, 1 if anything happens
+int SimpleFS_ls(DirectoryHandle* dh);
+
+// LC
+// frees all memory used and removes fileSystem and Disk
+// returns 0 on success, 1 if anything goes wrong
+// can only be used on root
+// final destination
+int SimpleFS_rmslash(DirectoryHandle* root);
 
 
 //****************** DEBUGGING FUNCTIONS **********************//
