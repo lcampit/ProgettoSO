@@ -7,9 +7,15 @@ OBJ = bit_map.o diskDriver.o fileSystem.o testFileSystem.o
 					$(CC) -c -o $@ $< $(CFLAGS)
 testFileSystem: $(OBJ)
 								$(CC) -o $@ $^ $(CFLAGS)
+term:
+		$(CC) bit_map.c diskDriver.c fileSystem.c SimpleFS.c -o SimpleFS $(CFLAGS)
 
+terminal:
+		./SimpleFS
+		
 test:
 	./testFileSystem
+
 .PHONY: clean
 
 clean:
