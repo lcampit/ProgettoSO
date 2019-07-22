@@ -62,9 +62,9 @@ DirectoryHandle* SimpleFS_init(SimpleFS* fs, DiskDriver* disk){
 
 FileHandle* SimpleFS_createFile(DirectoryHandle* dir, const char* filename){
 
-  int nextFreeBlock = DiskDriver_getFreeBlock(dir -> sfs -> disk, dir -> dcb -> fcb . block_in_disk);
+  int nextFreeBlock = DiskDriver_getFreeBlock(dir -> sfs -> disk, 0);     //may use dir -> dcb -> fcb . block_in_disk
   if(nextFreeBlock == -1){
-    printf("No space left on disk\n");
+    //printf("No space left on disk\n");
     return NULL;
   }
   int res;
@@ -72,7 +72,7 @@ FileHandle* SimpleFS_createFile(DirectoryHandle* dir, const char* filename){
   char** names = (char**) malloc(sizeof(char*) * dir -> dcb -> num_entries);
   res = SimpleFS_readDir(names, dir, 0);
   if(res != 0){
-    printf("Something went off while reading dir files names\n");
+    //printf("Something went off while reading dir files names\n");
     return NULL; //Something occured with readDir
   }
   int i;
@@ -354,7 +354,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
     }
     if(h < size){   //there's still something to write
     //Creates new FileBlock, writes to disk and call write for the remaining data
-        int nextFreeBlock = DiskDriver_getFreeBlock(f -> sfs -> disk, ffb -> header.next_block);
+        int nextFreeBlock = DiskDriver_getFreeBlock(f -> sfs -> disk, 0);     //may use ffb -> header.next_block
         if(nextFreeBlock == -1){  //No space left on disk
           return -1;
         }
@@ -406,7 +406,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
         else break;
       }
       if(j == 0){   //relative cursor points at end of block, a new block must be created and data written in it
-        int nextFreeBlock = DiskDriver_getFreeBlock(f -> sfs -> disk, f -> fcb -> fcb . block_in_disk);
+        int nextFreeBlock = DiskDriver_getFreeBlock(f -> sfs -> disk, 0);       // may use f -> fcb -> fcb . block_in_disk
         if(nextFreeBlock == -1){  //No space left on disk
           //printf("No space left on disk\n");
           return -1;
@@ -444,7 +444,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
 
       else if(j < size){ //there's still data to write
       //Creates new FileBlock, writes to disk and call write for the remaining data
-          int nextFreeBlock = DiskDriver_getFreeBlock(f -> sfs -> disk, previous -> header.next_block);
+          int nextFreeBlock = DiskDriver_getFreeBlock(f -> sfs -> disk, 0);       /// may use previous -> header.next_block);
           if(nextFreeBlock == -1){  //No space left on disk
             //printf("No space left on disk\n");
             return -1;
@@ -662,7 +662,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
     if(strncmp(dirname, "/", strlen("/")) == 0) {     //Cannot create a dir named /
       return 1;
     }
-    int nextFreeBlock = DiskDriver_getFreeBlock(dir -> sfs -> disk, dir -> dcb -> fcb . block_in_disk);
+    int nextFreeBlock = DiskDriver_getFreeBlock(dir -> sfs -> disk, 0);     // may use dir -> dcb -> fcb . block_in_disk
     if(nextFreeBlock == -1){
       //printf("Not enough space on disk\n");
       return 1;    //No space left on disk
@@ -714,7 +714,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
       DirectoryBlock* dest = (DirectoryBlock*) dir -> dcb;
       if(dest -> header . next_block == 0){
         //check for space
-        int posForDir = DiskDriver_getFreeBlock(dir -> sfs -> disk, dest -> header.next_block);
+        int posForDir = DiskDriver_getFreeBlock(dir -> sfs -> disk, 0);//may use dest -> header.next_block
         if(posForDir == -1){
           //no space left on disk for new DirectoryBlock
           return 1;
@@ -781,7 +781,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
         }
         else {
           //A new directoryBlock must be created and linked
-          int posForDir = DiskDriver_getFreeBlock(dir -> sfs -> disk, dest -> header.next_block);
+          int posForDir = DiskDriver_getFreeBlock(dir -> sfs -> disk, 0);   //may use dest -> header.next_block
           if(posForDir == -1){
             //no space left on disk for new DirectoryBlock
             return 1;
@@ -1075,6 +1075,20 @@ int SimpleFS_ls(DirectoryHandle* dh){
   printf("\n");
   free(names);
   return 0;
+}
+
+// LC
+// creates a copy of provided directory handler, to use in automatic testing
+// returns NULL if anything happens
+DirectoryHandle* cloneDh(DirectoryHandle* dh){
+  DirectoryHandle* toReturn = (DirectoryHandle*) malloc(sizeof(DirectoryHandle));
+  toReturn -> sfs = dh -> sfs;
+  toReturn -> dcb =  dh -> dcb;
+  toReturn -> directory = dh -> directory;
+  toReturn -> current_block = dh -> current_block;
+  toReturn -> pos_in_dir = dh -> pos_in_dir;
+  toReturn -> pos_in_block = dh -> pos_in_block;
+  return toReturn;
 }
 
 // LC

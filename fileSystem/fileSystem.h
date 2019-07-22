@@ -137,12 +137,11 @@ int SimpleFS_seek(FileHandle* file, int pos);
 int SimpleFS_changeDir(DirectoryHandle* dir, char* dirname);
 
 // LC
-// creates a new directory in the current one, linked by dir -> dcb -> header -> next_block
+// creates a new directory in the current one
 // returns 0 on success, 1 if anything happens
 int SimpleFS_mkDir(DirectoryHandle* dir, char* dirname);
 
 // BEGIN EXPERIMENTAL
-// LC
 // LC
 // Removes the given file and all his blocks from his dir
 // Returns 0 on success, 1 if anything happens
@@ -156,14 +155,14 @@ int SimpleFS_rmDir(DirectoryHandle* dir);
 //END EXPERIMENTAL
 
 // LC
-// removes the provided file or directory, recursively removing all file in a directory
-// returns 0 on success, 1 if anything happens
-int SimpleFS_remove(SimpleFS* fs, char* filename);
-
-// LC
 // prints all files and dir in provided directory using SimpleFS_readDir
 // returns 0 on success, 1 if anything happens
 int SimpleFS_ls(DirectoryHandle* dh);
+
+// LC
+// creates a copy of provided directory handler, to use in automatic testing
+// returns NULL if anything happens
+DirectoryHandle* cloneDh(DirectoryHandle* dh);
 
 // LC
 // frees all memory used and removes fileSystem and Disk
