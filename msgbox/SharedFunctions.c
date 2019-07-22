@@ -35,9 +35,28 @@ else{
 }
 
 int SharedWrite(char* text, void* memory){ //scrive nella shm il messaggio, restituendo la lunghezza dello stesso, in modo che possa essere aggiunta al puntatore nel processo
-  return 0;
+  printf("%d\n",(int)strlen(text));
+  char* buffer= (char*) memory;
+  sprintf(buffer, "%s\n",text);
+  printf("Sending the message...\n");
+  int len= strlen(text)+1;
+  return len;
 }
 
 int SharedRead(void* memory){ //legge il contenuto della shm
-  return 0;
+  char* buffer = (char*) memory;
+  int i = 0;
+  char* check = (char*) malloc (sizeof(char) * 60);
+  while(buffer[i] != '\0'){
+    printf("%c", buffer[i]);
+    check[i] = buffer[i];
+    i += 1;
+  }
+  if(!strcmp(check, "quit\n\n")){
+    free(check);
+    return -1;
+  }
+  free(check);
+  return i;
 }
+
