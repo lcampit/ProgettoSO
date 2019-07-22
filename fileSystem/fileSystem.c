@@ -29,7 +29,7 @@ DirectoryHandle* SimpleFS_init(SimpleFS* fs, DiskDriver* disk){
   //All set, writing block to disk
   int res = DiskDriver_writeBlock(disk, root, 0);
   if(res != 0){         //Error management
-    printf("Critical error, somtething went off while writing root block on disk\n");
+    //printf("Critical error, somtething went off while writing root block on disk\n");
     return NULL;
   }
 
@@ -39,7 +39,7 @@ DirectoryHandle* SimpleFS_init(SimpleFS* fs, DiskDriver* disk){
 
   res = DiskDriver_readBlock(fs -> disk, (void**)&(dh->dcb), 0);      //reading root block
   if(res != 1){
-    printf("Something went off while reading root block");
+    //printf("Something went off while reading root block");
     return NULL;
   }
   dh -> directory = NULL;     //top level, no need for this
@@ -231,7 +231,7 @@ int SimpleFS_readDir(char** names, DirectoryHandle* dir, int flag){
     res = DiskDriver_readBlock(dir -> sfs -> disk, (void**)&(dest), index);   //retrieves a fileblock
 
     if(res != 1) {
-      printf("Block was not written on disk\n");
+      //printf("Block was not written on disk\n");
       return 1;
     }
     if(dest -> fcb . is_dir == 0) names[i - numFreeBlocks] = dest -> fcb . name;
@@ -248,7 +248,7 @@ int SimpleFS_readDir(char** names, DirectoryHandle* dir, int flag){
             res = DiskDriver_readBlock(dir -> sfs -> disk, (void**)&(dirAux), nextDirBlock);
             nextDirBlock =  dirAux-> header . next_block;
             if(res != 1){
-              printf("Block was not written on disk\n");
+              //printf("Block was not written on disk\n");
               return 1;
             }
             for(; i < max; i++){
@@ -262,7 +262,7 @@ int SimpleFS_readDir(char** names, DirectoryHandle* dir, int flag){
               res = DiskDriver_readBlock(dir -> sfs -> disk, (void**)&(dest), index);   //retrieves a fileblock
 
               if(res != 1) {
-                printf("Block was not written on disk\n");
+                //printf("Block was not written on disk\n");
                 return 1;
               }
               if(dest -> fcb . is_dir == 0) names[i - numFreeBlocks] = dest -> fcb . name;
@@ -294,7 +294,7 @@ FileHandle* SimpleFS_openFile(DirectoryHandle* dir, const char* filename){
     }
     res = DiskDriver_readBlock(dir -> sfs -> disk, (void**)&(dest), index);
     if(res != 1){
-      printf("File Block was not written on disk\n");
+      //printf("File Block was not written on disk\n");
       return NULL;
     }
     if(dest -> fcb . is_dir == 0){   //we got a first file Block with a FCB
@@ -422,7 +422,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
         to_write -> header.block_in_file = dest -> header.block_in_file +1;
         res = DiskDriver_writeBlock(f -> sfs -> disk, to_write, nextFreeBlock);
         if(res != 0){     //something occcured while writing to disk
-          printf("Error while writing new block to disk\n");
+          //printf("Error while writing new block to disk\n");
           return -1;
         }
         //updating values
@@ -446,7 +446,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
       //Creates new FileBlock, writes to disk and call write for the remaining data
           int nextFreeBlock = DiskDriver_getFreeBlock(f -> sfs -> disk, previous -> header.next_block);
           if(nextFreeBlock == -1){  //No space left on disk
-            printf("No space left on disk\n");
+            //printf("No space left on disk\n");
             return -1;
           }
           FileBlock* to_write = (FileBlock*) malloc(sizeof(FileBlock));
@@ -455,7 +455,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
           to_write -> header.block_in_file = dest -> header.block_in_file +1;
           res = DiskDriver_writeBlock(f -> sfs -> disk, to_write, nextFreeBlock);
           if(res != 0){     //something occcured while writing to disk
-            printf("Error while writing new block to disk\n");
+            //printf("Error while writing new block to disk\n");
             return -1;
           }
           dest -> header.next_block = nextFreeBlock;
@@ -518,7 +518,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
       for(j = 0; j < num_jumps; j++){
         res = DiskDriver_readBlock(file -> sfs -> disk, (void**)&(dest), dest -> header.next_block);
         if(res != 1){
-          printf("Block was not written on disk\n");
+          //printf("Block was not written on disk\n");
           return -1;
         }
       }
@@ -664,7 +664,7 @@ int SimpleFS_write(FileHandle* f, void* data, int size){
     }
     int nextFreeBlock = DiskDriver_getFreeBlock(dir -> sfs -> disk, dir -> dcb -> fcb . block_in_disk);
     if(nextFreeBlock == -1){
-      printf("Not enough space on disk\n");
+      //printf("Not enough space on disk\n");
       return 1;    //No space left on disk
     }
     //Creating a new FirstDirectoryBlock
@@ -1085,6 +1085,7 @@ int SimpleFS_ls(DirectoryHandle* dh){
 int SimpleFS_rmslash(DirectoryHandle* root){ //finally removing root, fs and disk
     int res = DiskDriver_delete(root -> sfs -> disk);
     if(res != 0) return 1;
+    free(root -> current_block);
     free(root -> sfs);
     free(root);     //Rest in peace
     return 0;
