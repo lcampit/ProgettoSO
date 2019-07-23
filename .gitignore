@@ -1,5 +1,12 @@
 # Prerequisites
+test
+test.*
 *.d
+temp.txt
+testDiskDriver
+testDiskDriver.c
+testFileSystem
+testFileSystem.c
 
 # Object files
 *.o
