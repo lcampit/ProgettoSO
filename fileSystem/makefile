@@ -12,9 +12,13 @@ term:
 
 terminal:
 		./SimpleFS
-		
+
 test:
 	./testFileSystem
+
+all:
+	make
+	make term
 
 .PHONY: clean
 
