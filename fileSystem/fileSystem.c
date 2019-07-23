@@ -878,6 +878,7 @@ int SimpleFS_rmFile(DirectoryHandle* dir, char* filename){
         if(res != 0){
           return 1;
         }
+        free(file);
         while(nextBlock!=0){    //let's free all file blocks;
           res = DiskDriver_readBlock(dir -> sfs -> disk, (void**)&(auxFile), nextBlock);
           if(res!=1){
@@ -891,6 +892,7 @@ int SimpleFS_rmFile(DirectoryHandle* dir, char* filename){
             //Error with freeBlock
             return 1;
           }
+          free(file);
         }
         return 0;
       }
@@ -927,6 +929,7 @@ int SimpleFS_rmFile(DirectoryHandle* dir, char* filename){
           if(res != 0){ //Error occured while deleting dir block
             return 1;
           }
+          free(aux);
           previous -> header . next_block = 0;
           container -> fcb . size_in_blocks --;
         }
@@ -936,6 +939,7 @@ int SimpleFS_rmFile(DirectoryHandle* dir, char* filename){
         if(res != 0){
           return 1;
         }
+        free(file);
         while(nextBlock!=0){    //let's free all file blocks;
           res = DiskDriver_readBlock(dir -> sfs -> disk, (void**)&(auxFile), nextBlock);
           if(res!=1){
@@ -949,6 +953,7 @@ int SimpleFS_rmFile(DirectoryHandle* dir, char* filename){
             //Error with freeBlock
             return 1;
           }
+          free(file);
         }
         return 0;
       }
@@ -1019,10 +1024,14 @@ int SimpleFS_rmDir(DirectoryHandle* dir){
           continue;
         }
         if(index == indexOfDir){
+          FirstDirectoryBlock* toDelete;
+          res = DiskDriver_readBlock(dir -> sfs -> disk, (void**)&(toDelete), indexOfDir);
+          if(res != 1) return 1; //Something happened
           dir -> dcb -> file_blocks[i] = FREE_BLOCK;
           dir -> dcb -> num_entries--;
           res = DiskDriver_freeBlock(dir -> sfs -> disk, indexOfDir);
           if(res != 0) return 1;
+          free(toDelete);
           return 0;
         }
       }
@@ -1036,18 +1045,21 @@ int SimpleFS_rmDir(DirectoryHandle* dir){
     while(nextDirBlock != 0){
       res = DiskDriver_readBlock(dir -> sfs -> disk, (void**)&(aux), nextDirBlock);
       if(res != 1) return 1;
-    }
-    for(; i < max; i++){
-      if(i -offset - num_jumps*(BLOCK_SIZE-sizeof(BlockHeader))/sizeof(int) < (BLOCK_SIZE-sizeof(BlockHeader))/sizeof(int)){
-        if(aux -> file_blocks[i] == FREE_BLOCK){
-          max++;
-          continue;
-        }
+      for(; i < max; i++){
+        if(i -offset - num_jumps*(BLOCK_SIZE-sizeof(BlockHeader))/sizeof(int) < (BLOCK_SIZE-sizeof(BlockHeader))/sizeof(int)){
+          if(aux -> file_blocks[i] == FREE_BLOCK){
+            max++;
+            continue;
+          }
         else if(aux -> file_blocks[i] == indexOfDir){
+          FirstDirectoryBlock* toDelete;
+          res = DiskDriver_readBlock(dir -> sfs -> disk, (void**)&(toDelete), indexOfDir);
+          if(res != 1) return 1;
           aux -> file_blocks[i] = FREE_BLOCK;
           dir -> dcb -> num_entries--;
           res = DiskDriver_freeBlock(dir -> sfs -> disk, indexOfDir);
           if(res != 0) return 1;
+          free(toDelete);
           return 0;
         }
       }
@@ -1057,8 +1069,8 @@ int SimpleFS_rmDir(DirectoryHandle* dir){
         break;
       }
     }
+  }
     return 0;
-
 }
 // LC
 // prints all files and dir in provided directory using SimpleFS_readDir
