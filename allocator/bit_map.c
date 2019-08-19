@@ -1,16 +1,15 @@
+#include "bit_map.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-typedef struct{
-  int size;// grandezza buffer
-  int bits;// numero tot di bit
-  unsigned char *friendo; // buffer per il buddy
-} BitMap;
 
 void BitMap_init(BitMap* b, int size){
+
   b -> friendo = (unsigned char*) malloc(size*sizeof(unsigned char));
+
   b -> size = size;
   b -> bits = size*8;
+
   BitMap_setRange(b, 0, 0, b->bits);
 }
 
@@ -49,12 +48,4 @@ void BitMap_printInfo(BitMap* b){
   printf("bits: %d\n", b->bits);
   printf("----------\n");
   return;
-}
-
-int BitMap_checkRange(BitMap* b, int start, int end, int value){
-  int j = start;
-  for(; j < end; j++){
-    if(BitMap_get(b, j) != value) return 0;
-  }
-  return 1;
 }
