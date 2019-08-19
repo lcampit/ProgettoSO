@@ -112,5 +112,6 @@ int main(int argc, char** argv){
     executeCommand(dh, command, argument);
     }
   }
+  printf("See you soon!\n");
   return 0;
 }
