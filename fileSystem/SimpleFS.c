@@ -33,7 +33,7 @@ void executeCommand(DirectoryHandle* dh, char* command, char* argument){
     if(fh == NULL){
       printf("Error in createFile\n");
     }
-    free(fh);
+    SimpleFS_close(fh);
   }
   else if(strncmp(command, "rmfile", 6) == 0){
     res =  SimpleFS_rmFile(dh, argument);

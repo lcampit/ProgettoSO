@@ -19,6 +19,7 @@ test:
 all:
 	make
 	make term
+	make clean
 
 .PHONY: clean
 

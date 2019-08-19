@@ -11,7 +11,6 @@ void DiskDriver_init(DiskDriver* disk, int num_blocks){
     disk -> header -> bitmap_blocks = num_blocks;
     disk -> header -> bitmap_entries = num_blocks / 8;           //number of bytes in the bitmap
     disk -> header -> free_blocks = num_blocks;
-    disk -> header -> first_free_block = 0;
 
     disk -> map = (BitMap*) malloc(sizeof(BitMap));              //Allocates Bitmap
     BitMap_init(disk->map, disk -> header -> bitmap_entries);    //creates bitmap with bitmpa_entries * 8 bit, one bit per block
@@ -48,6 +47,7 @@ int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num){
   }
   BitMap_set(disk -> map, block_num);
   disk -> blocks[block_num] = src;
+  disk -> header -> free_blocks--;
   return 0;
 }
 
@@ -65,6 +65,7 @@ int DiskDriver_freeBlock(DiskDriver* disk, int block_num){
   else {
     BitMap_unset(disk -> map, block_num); //Set block_num bit to 0, free block
     disk -> blocks[block_num] = 0;        //Empties block
+    disk -> header -> free_blocks--;
     return 0;
   }
 }
@@ -74,6 +75,9 @@ int DiskDriver_freeBlock(DiskDriver* disk, int block_num){
 // returns -1 if there aren't any or if anything goes wrong
 int DiskDriver_getFreeBlock(DiskDriver* disk, int start){
   if (start > disk -> header -> bitmap_blocks){
+    return -1;
+  }
+  if(disk -> header -> free_blocks == 0){   //no free blocks to return 
     return -1;
   }
   int i;
