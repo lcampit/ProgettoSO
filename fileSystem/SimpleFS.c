@@ -8,6 +8,8 @@ void print_help(){
   printf("\tmkdir dirname, creates a dir in current directory\n");
   printf("\tls, prints contents of current directory\n");
   printf("\tcd dir, switches to dir in current directory\n");
+  printf("\twrite filename, opens a dialog to write data in existing filename in current directory\n");
+  printf("\tread filename, reads data written in existing filename in current directory\n");
   printf("\trmfile filename, deletes file in current directory\n");
   printf("\trmdir dirname, deletes dir in current directory\n");
   printf("\tquit, releases resources and quits program\n");
