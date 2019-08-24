@@ -4,10 +4,13 @@
 #include <stdlib.h>
 
 void BitMap_init(BitMap* b, int size){
+
   b -> friendo = (unsigned char*) malloc(size*sizeof(unsigned char));
+
   b -> size = size;
   b -> bits = size*8;
-  BitMap_setRange(&bm, 0, 0, bm.bits);
+
+  BitMap_setRange(b, 0, 0, b->bits);
 }
 
 void BitMap_set(BitMap* b, int i) {
