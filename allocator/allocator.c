@@ -1,12 +1,29 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <math.h>
 #include "allocator.h"
+
+buffer* buffer_create(int size, int b_size){
+	buffer* buff= (buffer*) malloc(sizeof(buffer));
+        buff->memory=(unsigned char*) malloc(sizeof(unsigned char)*size);
+	buff->block_size=b_size;
+	buff->levels=log2(size/b_size)+1;
+	 BitMap *bit= (BitMap*)malloc(sizeof(BitMap));
+	 BitMap_init(bit,size);
+	 buff->check=bit;
+	buff->max=size;
+	return buff;
+}
+
+void buffer_destroy( buffer* buff){
+    unsigned char* a=buff->memory;
+    free(a);
+    BitMap* bit= buff->check;
+    unsigned char* b= bit->friendo;
+    free(b);
+    free (bit);
+    free(buff);
+}
 
 void* my_alloc(buffer* buff, int size){
 	int level= buddylevel(buff,size);
-	printf("%d\n", size);
-	printf("level %d\n", level);
 	int levello = level;
 	int k = 0;
 	int i=pow(2,level);
@@ -15,7 +32,7 @@ void* my_alloc(buffer* buff, int size){
 		if(BitMap_get(buff->check,i)==0){
 			int j= i/2;
 			while(level){
-				//printf("%d\n",j);
+
 				if(BitMap_get(buff->check,j)==1) break;
 				BitMap_set(buff->check,j);
 				level--;
@@ -27,7 +44,7 @@ void* my_alloc(buffer* buff, int size){
 		}
 		k++;
 	}
-	 return NULL; //shit hit the fan
+	 return NULL;
 }
 
 

@@ -1,6 +1,8 @@
 #pragma once
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <math.h>
 #include "bit_map.h"
 
 typedef struct {
@@ -11,6 +13,8 @@ typedef struct {
   int max;
 }buffer;
 
+buffer* buffer_create(int size, int b_size);//AF creates a new buffer
+void buffer_destroy(buffer* buff); // AF destroys buffer
 void* my_alloc(buffer* buff, int size);//AF,MG grants memory spaces
 void my_free(buffer* b, void* ptr,int size);//AF,MG  frees memory
 int buddylevel(buffer* buff,int size); //AF,MG returns level of depth of minimum memory segment

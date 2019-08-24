@@ -77,7 +77,7 @@ int DiskDriver_getFreeBlock(DiskDriver* disk, int start){
   if (start > disk -> header -> bitmap_blocks){
     return -1;
   }
-  if(disk -> header -> free_blocks == 0){   //no free blocks to return 
+  if(disk -> header -> free_blocks == 0){   //no free blocks to return
     return -1;
   }
   int i;
