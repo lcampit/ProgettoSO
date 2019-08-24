@@ -19,6 +19,9 @@ test:
 all:
 	make
 	make term
+	make testFileSystem
+	make clean
+
 
 .PHONY: clean
 
